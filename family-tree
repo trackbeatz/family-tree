@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes"/>
+    <title>Family Tree Studio</title>
+    
+    <!-- Mobile App / PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2b1e16">
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Family Tree Studio","short_name":"FamilyTree","start_url":".","display":"standalone","background_color":"#fdfaf1","theme_color":"#2b1e16","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3898/3898082.png","sizes":"512x512","type":"image/png"}]}'>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --parchment: #fdfaf1;
+            --ink: #2b1e16;
+            --gold: #c5a059;
+            --branch: #6d4c41;
+            --danger: #c0392b;
+            --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --radius: 14px;
+            --transition: 0.2s ease;
+        }
+        body {
+            font-family: 'Garamond', 'Georgia', serif;
+            background: var(--parchment);
+            color: var(--ink);
+            padding: 15px 10px 30px;
+            min-height: 100vh;
+        }
+        .app-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 12px;
+            gap: 10px;
+        }
+        .app-header h1 {
+            font-weight: 400;
+            letter-spacing: 1px;
+            font-size: 1.4rem;
+        }
+        .tree-selector-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            margin-bottom: 10px;
+            background: rgba(197, 160, 89, 0.15);
+            padding: 8px 12px;
+            border-radius: 10px;
+        }
+        .tree-selector-bar select {
+            flex: 1;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--branch);
+            background: white;
+            font-family: inherit;
+            font-size: 0.95rem;
+        }
+        .toolbar {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .toolbar button, .tree-selector-bar button {
+            background: white;
+            border: 1px solid var(--branch);
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-family: inherit;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+        }
+        .toolbar button:hover, .tree-selector-bar button:hover {
+            background: var(--gold);
+            color: white;
+            border-color: var(--gold);
+        }
+        .toolbar button.btn-danger {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+        .toolbar button.btn-danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .tree-container {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            padding: 15px 10px 25px;
+            background: rgba(255, 252, 245, 0.5);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            min-height: 550px;
+        }
+        
+        .tree {
+            display: flex;
+            justify-content: center;
+            width: max-content;
+            min-width: 100%;
+            padding: 10px;
+        }
+
+        .tree ul, .tree .children-wrapper {
+            padding-top: 20px;
+            position: relative;
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: center !important;
+            flex-wrap: nowrap !important;
+            list-style: none;
+            margin: 0;
+            padding-left: 0;
+        }
+
+        .tree li {
+            text-align: center;
+            position: relative;
+            padding: 20px 6px 0 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 0 0 auto !important;
+        }
+        
+        .tree ul ul::before, .tree ul .children-wrapper::before {
+            content: ''; position: absolute; top: 0; left: 50%;
+            border-left: 2px solid var(--branch); height: 20px; width: 0;
+        }
+
+        .tree li::before, .tree li::after {
+            content: ''; position: absolute; top: 0; right: 50%;
+            border-top: 2px solid var(--branch); width: 50%; height: 20px;
+        }
+        .tree li::after { right: auto; left: 50%; border-left: 2px solid var(--branch); }
+        .tree li:only-child::after, .tree li:only-child::before { display: none; }
+        .tree li:only-child { padding-top: 0; }
+        .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+        .tree li:last-child::before { border-right: 2px solid var(--branch); border-radius: 0 5px 0 0; }
+        .tree li:first-child::after { border-radius: 5px 0 0 0; }
+
+        .spouse-group {
+            display: flex !important; flex-direction: row !important;
+            flex-wrap: nowrap !important; justify-content: center !important;
+            align-items: center !important; gap: 10px !important;
+            position: relative; padding: 6px 10px;
+            background: rgba(255, 252, 245, 0.6);
+            border: 1px dashed var(--gold); border-radius: 12px; margin-bottom: 5px;
+        }
+
+        .children-wrapper { position: relative; width: 100%; }
+
+        .person {
+            width: 115px; background: white; border-radius: var(--radius);
+            padding: 6px 4px 5px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+            border: 1px solid #dcd0c0; transition: var(--transition);
+            position: relative; z-index: 2; flex-shrink: 0;
+        }
+        .person:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1); }
+        .person .frame {
+            width: 55px; height: 65px; margin: 0 auto 4px;
+            border: 2px solid var(--branch);
+            border-radius: 50% 50% 40% 40% / 60% 60% 30% 30%;
+            background: #f5ede4; overflow: hidden; display: flex;
+            align-items: center; justify-content: center;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23b7a690"><circle cx="50" cy="40" r="20"/><circle cx="50" cy="85" r="35"/></svg>');
+            background-size: 55%; background-position: center 60%; background-repeat: no-repeat;
+        }
+        .person .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .name-box {
+            background: #fcf9f2; border: 1px solid #d6cbbc;
+            padding: 3px 2px; font-size: 11px; font-weight: 600;
+            border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02); word-wrap: break-word;
+        }
+        .role { font-size: 8.5px; color: #776b5e; display: block; font-weight: 400; }
+
+        .actions { display: flex; justify-content: center; gap: 3px; margin: 4px 0 2px; }
+        .actions button {
+            background: #f0ebe3; border: none; color: var(--branch);
+            font-size: 10px; padding: 4px 6px; border-radius: 20px;
+            cursor: pointer; transition: var(--transition);
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .actions button:hover { background: var(--gold); color: white; }
+
+        .collapse-toggle {
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: 1px solid var(--branch) !important; color: var(--branch) !important;
+            font-size: 11px !important; cursor: pointer !important; padding: 3px 10px !important;
+            transition: var(--transition) !important; margin: 4px 0 !important; border-radius: 20px !important; z-index: 3;
+        }
+        .collapse-toggle:hover { color: white !important; background: var(--gold) !important; border-color: var(--gold) !important; }
+
+        .collapsed > ul, .collapsed > .children-wrapper { display: none !important; }
+        .collapsed .collapse-toggle .fa-chevron-up { display: none !important; }
+        .collapse-toggle .fa-chevron-down { display: none !important; }
+        .collapsed .collapse-toggle .fa-chevron-down { display: inline-block !important; }
+        .collapse-toggle .fa-chevron-up { display: inline-block !important; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(4px); display: flex; align-items: center;
+            justify-content: center; z-index: 999; visibility: hidden; opacity: 0; transition: 0.2s;
+        }
+        .modal-overlay.active { visibility: visible; opacity: 1; }
+        .modal {
+            background: white; padding: 22px 20px; border-radius: 20px;
+            max-width: 400px; width: 92%; box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+        }
+        .modal h3 { margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 8px; font-size: 1.1rem; }
+        .modal label { display: block; margin: 10px 0 4px; font-weight: 600; font-size: 0.85rem; }
+        .modal input, .modal textarea { width: 100%; padding: 9px 12px; border: 1px solid #ccc; border-radius: 10px; font-family: monospace, inherit; }
+        .modal textarea { height: 120px; font-size: 0.78rem; resize: none; background: #fafafa; }
+        .modal .btn-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; flex-wrap: wrap; }
+        .modal .btn-row button { padding: 8px 16px; border-radius: 40px; border: none; cursor: pointer; background: #eee; font-size: 0.85rem; }
+        .modal .btn-row button.primary { background: var(--gold); color: white; }
+
+        .file-input-hidden { display: none; }
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #2b1e16; color: #f5ede4; padding: 10px 22px; border-radius: 60px;
+            font-size: 0.9rem; box-shadow: 0 6px 20px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s;
+            z-index: 1000; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div class="app-header">
+        <div><h1 id="appHeaderTitle">🌳 Family Tree Studio</h1></div>
+        <div class="toolbar">
+            <button id="exportBtn"><i class="fas fa-download"></i> Export</button>
+            <button id="importBtn"><i class="fas fa-upload"></i> Import</button>
+            <button id="resetBtn" class="btn-danger"><i class="fas fa-trash-alt"></i> Clear Storage</button>
+        </div>
+    </div>
+
+    <div class="tree-selector-bar">
+        <label for="treeSelect"><i class="fas fa-sitemap"></i> Tree:</label>
+        <select id="treeSelect"></select>
+        <button id="newTreeBtn"><i class="fas fa-plus"></i> New Tree</button>
+    </div>
+
+    <div class="tree-container" id="mainTree">
+        <div class="tree" id="treeRoot"></div>
+    </div>
+
+    <!-- Child / Person Edit Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h3 id="modalTitle"><i class="fas fa-user-plus"></i> Add Member</h3>
+            <label>Name</label>
+            <input type="text" id="personNameInput" placeholder="e.g. John Doe" />
+            <label>Role / Title (optional)</label>
+            <input type="text" id="personRoleInput" placeholder="e.g. Son, Daughter, Spouse" />
+            <div class="btn-row">
+                <button id="modalCancel">Cancel</button>
+                <button class="primary" id="modalConfirm">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Tree Modal -->
+    <div class="modal-overlay" id="newTreeModalOverlay">
+        <div class="modal">
+            <h3><i class="fas fa-folder-plus"></i> Create New Tree</h3>
+            <label>Family Tree Name</label>
+            <input type="text" id="newTreeTitleInput" placeholder="e.g. Smith Family Tree" />
+            <label>Root Patriarch / Ancestor Name</label>
+            <input type="text" id="rootPersonNameInput" placeholder="e.g. Root Ancestor" />
+            <div class="btn-row">
+                <button id="newTreeCancel">Cancel</button>
+                <button class="primary" id="newTreeConfirm">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="exportModalOverlay">
+        <div class="modal">
+            <h3><i class="fas fa-file-export"></i> Export Backup</h3>
+            <p style="font-size:0.82rem; color:#555; margin-bottom:10px;">Tap <b>Download File</b> or click <b>Copy Text</b> to manually paste and save your JSON file anywhere.</p>
+            <textarea id="exportJsonTextarea" readonly></textarea>
+            <div class="btn-row">
+                <button id="exportCloseBtn">Close</button>
+                <button id="copyJsonBtn"><i class="fas fa-copy"></i> Copy Text</button>
+                <button class="primary" id="downloadJsonFileBtn"><i class="fas fa-download"></i> Download File</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="imageUpload" accept="image/*" class="file-input-hidden" />
+    <div id="toast" class="toast">Saved</div>
+
+    <script>
+        (function() {
+            // Fresh clean tree template
+            const DEFAULT_STARTER_TREE = {
+                id: 'root_default',
+                name: 'Root Ancestor',
+                role: 'Family Head',
+                children: []
+            };
+
+            let appStorage = {
+                activeTreeId: 'default_tree',
+                trees: {
+                    'default_tree': {
+                        id: 'default_tree',
+                        title: 'My Family Tree',
+                        data: DEFAULT_STARTER_TREE,
+                        images: {}
+                    }
+                }
+            };
+
+            let modalMode = 'add';
+            let pendingTargetId = null;
+            let imageTargetId = null;
+
+            function generateId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
+            function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+            function getActiveTree() { return appStorage.trees[appStorage.activeTreeId]; }
+
+            function findNode(root, id) {
+                if (!root) return null;
+                if (root.id === id) return root;
+                if (root.children) {
+                    for (let c of root.children) {
+                        const found = findNode(c, id);
+                        if (found) return found;
+                    }
+                }
+                if (root.spouses) {
+                    for (let s of root.spouses) {
+                        const found = findNode(s, id);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            }
+
+            function renderTree() {
+                const active = getActiveTree();
+                const rootEl = document.getElementById('treeRoot');
+                if (!rootEl || !active || !active.data) return;
+                
+                document.getElementById('appHeaderTitle').textContent = '🌳 ' + active.title;
+                rootEl.innerHTML = '<ul>' + buildTreeHTML(active.data, active.images) + '</ul>';
+                updateTreeDropdown();
+                attachDelegatedEvents();
+            }
+
+            function updateTreeDropdown() {
+                const select = document.getElementById('treeSelect');
+                select.innerHTML = '';
+                Object.keys(appStorage.trees).forEach(id => {
+                    const option = document.createElement('option');
+                    option.value = id;
+                    option.textContent = appStorage.trees[id].title;
+                    if (id === appStorage.activeTreeId) option.selected = true;
+                    select.appendChild(option);
+                });
+            }
+
+            function buildTreeHTML(node, images) {
+                if (!node || !node.id) return '';
+
+                if (node.spouses && node.spouses.length > 0) {
+                    const allSpouses = [node, ...node.spouses];
+                    const spouseCards = allSpouses.map(sp => buildPersonCard(sp, images)).join('');
+
+                    let allChildren = [];
+                    node.spouses.forEach(sp => {
+                        if (sp.children && sp.children.length > 0) {
+                            sp.children.forEach(child => allChildren.push(child));
+                        }
+                    });
+
+                    const hasChildren = allChildren.length > 0;
+                    const childrenHTML = hasChildren ?
+                        '<ul class="children-wrapper">' + allChildren.map(c => buildTreeHTML(c, images)).join('') + '</ul>' : '';
+
+                    const toggleBtn = hasChildren ?
+                        '<button class="collapse-toggle" data-id="' + node.id + '" aria-label="Toggle children">' +
+                            '<i class="fas fa-chevron-up"></i><i class="fas fa-chevron-down"></i>' +
+                        '</button>' : '';
+
+                    return '<li data-nodeid="' + node.id + '" class="' + (hasChildren ? 'has-children' : '') + '">' +
+                        '<div class="spouse-group">' + spouseCards + '</div>' +
+                        toggleBtn + childrenHTML +
+                    '</li>';
+                }
+
+                if (node.children && node.children.length > 0) {
+                    const childHTML = '<ul>' + node.children.map(c => buildTreeHTML(c, images)).join('') + '</ul>';
+                    const toggleBtn = '<button class="collapse-toggle" data-id="' + node.id + '" aria-label="Toggle children">' +
+                        '<i class="fas fa-chevron-up"></i><i class="fas fa-chevron-down"></i>' +
+                    '</button>';
+                    return '<li data-nodeid="' + node.id + '" class="has-children">' +
+                        buildPersonCard(node, images) + toggleBtn + childHTML +
+                    '</li>';
+                }
+
+                return '<li data-nodeid="' + node.id + '">' + buildPersonCard(node, images) + '</li>';
+            }
+
+            function buildPersonCard(node, images) {
+                const imgSrc = images[node.id] || '';
+                const imgTag = imgSrc ? '<img src="' + imgSrc + '" alt="' + node.name + '" />' : '';
+                return '<div class="person">' +
+                    '<div class="frame">' + imgTag + '</div>' +
+                    '<div class="name-box">' + (node.name || 'Unnamed') + ' <span class="role">' + (node.role || '') + '</span></div>' +
+                    '<div class="actions">' +
+                        '<button class="edit-person-btn" data-id="' + node.id + '" title="Edit Details"><i class="fas fa-pen"></i></button>' +
+                        '<button class="upload-img-btn" data-id="' + node.id + '" title="Upload Photo"><i class="fas fa-camera"></i></button>' +
+                        '<button class="add-child-btn" data-parentid="' + node.id + '" title="Add Child"><i class="fas fa-plus"></i></button>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            function toggleCollapse(nodeId) {
+                const li = document.querySelector('li[data-nodeid="' + nodeId + '"]');
+                if (li) li.classList.toggle('collapsed');
+            }
+
+            function attachDelegatedEvents() {
+                const container = document.getElementById('mainTree');
+                if (!container) return;
+                container.removeEventListener('click', handleContainerClick);
+                container.addEventListener('click', handleContainerClick);
+            }
+
+            function handleContainerClick(e) {
+                const target = e.target.closest('button');
+                if (!target) return;
+
+                if (target.classList.contains('collapse-toggle')) {
+                    const id = target.getAttribute('data-id');
+                    if (id) toggleCollapse(id);
+                    return;
+                }
+
+                if (target.classList.contains('add-child-btn')) {
+                    const parentId = target.getAttribute('data-parentid');
+                    if (parentId) openAddModal(parentId);
+                    return;
+                }
+
+                if (target.classList.contains('edit-person-btn')) {
+                    const id = target.getAttribute('data-id');
+                    if (id) openEditModal(id);
+                    return;
+                }
+
+                if (target.classList.contains('upload-img-btn')) {
+                    const id = target.getAttribute('data-id');
+                    if (id) triggerImageUpload(id);
+                    return;
+                }
+            }
+
+            function openAddModal(parentId) {
+                modalMode = 'add';
+                pendingTargetId = parentId;
+                document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus"></i> Add Child';
+                document.getElementById('personNameInput').value = '';
+                document.getElementById('personRoleInput').value = '';
+                document.getElementById('modalOverlay').classList.add('active');
+            }
+
+            function openEditModal(nodeId) {
+                modalMode = 'edit';
+                pendingTargetId = nodeId;
+                const active = getActiveTree();
+                const node = findNode(active.data, nodeId);
+                if (!node) return;
+
+                document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-edit"></i> Edit Member';
+                document.getElementById('personNameInput').value = node.name || '';
+                document.getElementById('personRoleInput').value = node.role || '';
+                document.getElementById('modalOverlay').classList.add('active');
+            }
+
+            function confirmPersonModal() {
+                const name = document.getElementById('personNameInput').value.trim();
+                const role = document.getElementById('personRoleInput').value.trim();
+                if (!name) { showToast('Please enter a name'); return; }
+
+                const active = getActiveTree();
+
+                if (modalMode === 'add') {
+                    let parent = findNode(active.data, pendingTargetId);
+                    if (!parent) { showToast('Error: parent not found'); return; }
+
+                    if (parent.spouses && parent.spouses.length > 0) {
+                        if (!parent.spouses[0].children) parent.spouses[0].children = [];
+                        parent.spouses[0].children.push({ id: generateId(), name, role, children: [] });
+                    } else {
+                        if (!parent.children) parent.children = [];
+                        parent.children.push({ id: generateId(), name, role, children: [] });
+                    }
+                    showToast('Added ' + name);
+                } else if (modalMode === 'edit') {
+                    let node = findNode(active.data, pendingTargetId);
+                    if (node) {
+                        node.name = name;
+                        node.role = role;
+                        showToast('Updated ' + name);
+                    }
+                }
+
+                saveAndRender();
+                document.getElementById('modalOverlay').classList.remove('active');
+            }
+
+            function triggerImageUpload(nodeId) {
+                imageTargetId = nodeId;
+                document.getElementById('imageUpload').click();
+            }
+
+            function handleImageUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    if (imageTargetId) {
+                        const active = getActiveTree();
+                        active.images[imageTargetId] = ev.target.result;
+                        saveAndRender();
+                        showToast('Image updated');
+                    }
+                    imageTargetId = null;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            }
+
+            function createNewTree() {
+                const title = document.getElementById('newTreeTitleInput').value.trim() || 'New Family Tree';
+                const rootName = document.getElementById('rootPersonNameInput').value.trim() || 'Root Ancestor';
+                
+                const newId = 'tree_' + Date.now();
+                appStorage.trees[newId] = {
+                    id: newId,
+                    title: title,
+                    data: { id: 'root_' + newId, name: rootName, role: 'Family Head', children: [] },
+                    images: {}
+                };
+                appStorage.activeTreeId = newId;
+                saveAndRender();
+                document.getElementById('newTreeModalOverlay').classList.remove('active');
+                showToast('Created ' + title);
+            }
+
+            function saveData() {
+                try {
+                    localStorage.setItem('family_studio_app_data', JSON.stringify(appStorage));
+                } catch(e) {
+                    console.warn('Storage saving error:', e);
+                }
+            }
+
+            function loadData() {
+                try {
+                    const raw = localStorage.getItem('family_studio_app_data');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && parsed.trees && parsed.activeTreeId) {
+                            appStorage = parsed;
+                            return true;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Storage read error:', e);
+                }
+                return false;
+            }
+
+            function saveAndRender() {
+                saveData();
+                renderTree();
+            }
+
+            function openExportModal() {
+                const jsonStr = JSON.stringify(appStorage, null, 2);
+                document.getElementById('exportJsonTextarea').value = jsonStr;
+                document.getElementById('exportModalOverlay').classList.add('active');
+            }
+
+            function downloadExportFile() {
+                const jsonStr = JSON.stringify(appStorage, null, 2);
+                const fileName = (appStorage.trees[appStorage.activeTreeId].title || 'family_tree').toLowerCase().replace(/\s+/g, '_') + '_backup.json';
+                
+                // Use data URL for better webview compatibility
+                const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
+                const link = document.createElement('a');
+                link.setAttribute('href', dataUri);
+                link.setAttribute('download', fileName);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast('Download started');
+            }
+
+            function copyExportJson() {
+                const textarea = document.getElementById('exportJsonTextarea');
+                textarea.select();
+                textarea.setSelectionRange(0, 99999);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textarea.value).then(() => {
+                        showToast('Copied to clipboard!');
+                    });
+                } else {
+                    document.execCommand('copy');
+                    showToast('Copied to clipboard!');
+                }
+            }
+
+            function importJSON(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.trees && data.activeTreeId) {
+                            appStorage = data;
+                        } else if (data.tree) {
+                            const importId = 'imported_' + Date.now();
+                            appStorage.trees[importId] = {
+                                id: importId,
+                                title: data.tree.name ? data.tree.name + ' Tree' : 'Imported Family Tree',
+                                data: data.tree,
+                                images: data.images || {}
+                            };
+                            appStorage.activeTreeId = importId;
+                        } else {
+                            throw new Error('invalid format');
+                        }
+                        saveAndRender();
+                        showToast('Import successful');
+                    } catch (err) {
+                        showToast('Invalid JSON file');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function purgeStorage() {
+                if (confirm("Wipe all saved trees and start completely fresh?")) {
+                    localStorage.removeItem('family_studio_app_data');
+                    appStorage = {
+                        activeTreeId: 'default_tree',
+                        trees: {
+                            'default_tree': {
+                                id: 'default_tree',
+                                title: 'My Family Tree',
+                                data: clone(DEFAULT_STARTER_TREE),
+                                images: {}
+                            }
+                        }
+                    };
+                    saveAndRender();
+                    showToast('Cleared all storage');
+                }
+            }
+
+            function showToast(msg) {
+                const el = document.getElementById('toast');
+                if (!el) return;
+                el.textContent = msg;
+                el.classList.add('show');
+                clearTimeout(el._timer);
+                el._timer = setTimeout(() => el.classList.remove('show'), 2000);
+            }
+
+            function init() {
+                if (!loadData()) {
+                    saveData();
+                }
+                renderTree();
+
+                document.getElementById('treeSelect').addEventListener('change', function(e) {
+                    appStorage.activeTreeId = e.target.value;
+                    saveAndRender();
+                });
+
+                document.getElementById('newTreeBtn').addEventListener('click', function() {
+                    document.getElementById('newTreeTitleInput').value = '';
+                    document.getElementById('rootPersonNameInput').value = '';
+                    document.getElementById('newTreeModalOverlay').classList.add('active');
+                });
+                document.getElementById('newTreeConfirm').addEventListener('click', createNewTree);
+                document.getElementById('newTreeCancel').addEventListener('click', function() {
+                    document.getElementById('newTreeModalOverlay').classList.remove('active');
+                });
+
+                document.getElementById('modalConfirm').addEventListener('click', confirmPersonModal);
+                document.getElementById('modalCancel').addEventListener('click', () => {
+                    document.getElementById('modalOverlay').classList.remove('active');
+                });
+
+                document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+                
+                // Export Modal bindings
+                document.getElementById('exportBtn').addEventListener('click', openExportModal);
+                document.getElementById('exportCloseBtn').addEventListener('click', () => {
+                    document.getElementById('exportModalOverlay').classList.remove('active');
+                });
+                document.getElementById('downloadJsonFileBtn').addEventListener('click', downloadExportFile);
+                document.getElementById('copyJsonBtn').addEventListener('click', copyExportJson);
+
+                document.getElementById('resetBtn').addEventListener('click', purgeStorage);
+                
+                document.getElementById('importBtn').addEventListener('click', function() {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'application/json';
+                    input.onchange = function(e) {
+                        if (e.target.files.length) importJSON(e.target.files[0]);
+                        input.remove();
+                    };
+                    input.click();
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+</html>
