@@ -27,3 +27,5 @@ Since **Family Tree Studio** is a standalone, single-file web application, no bu
    git clone git@github.com:trackbeatz/family-tree.git
    cd family-tree
 # family-tree
+Now navigate to the folder where you cloned it and click on family-tree.html
+open with browser of your choice and start creating trees. 
