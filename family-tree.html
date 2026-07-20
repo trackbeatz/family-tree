@@ -56,9 +56,11 @@
             background: rgba(197, 160, 89, 0.15);
             padding: 8px 12px;
             border-radius: 10px;
+            flex-wrap: wrap;
         }
         .tree-selector-bar select {
             flex: 1;
+            min-width: 140px;
             padding: 6px 10px;
             border-radius: 6px;
             border: 1px solid var(--branch);
@@ -257,11 +259,25 @@
     <div class="tree-selector-bar">
         <label for="treeSelect"><i class="fas fa-sitemap"></i> Tree:</label>
         <select id="treeSelect"></select>
+        <button id="editTreeTitleBtn" title="Rename active family tree"><i class="fas fa-pen"></i> Edit Title</button>
         <button id="newTreeBtn"><i class="fas fa-plus"></i> New Tree</button>
     </div>
 
     <div class="tree-container" id="mainTree">
         <div class="tree" id="treeRoot"></div>
+    </div>
+
+    <!-- Edit Tree Title Modal -->
+    <div class="modal-overlay" id="editTreeModalOverlay">
+        <div class="modal">
+            <h3><i class="fas fa-edit"></i> Edit Tree Name</h3>
+            <label>Family Tree Name</label>
+            <input type="text" id="editTreeTitleInput" placeholder="e.g. My Family Tree" />
+            <div class="btn-row">
+                <button id="editTreeCancel">Cancel</button>
+                <button class="primary" id="editTreeConfirm">Save</button>
+            </div>
+        </div>
     </div>
 
     <!-- Child / Person Edit Modal -->
@@ -313,7 +329,7 @@
 
     <script>
         (function() {
-            // Fresh clean tree template
+            // Clean tree template
             const DEFAULT_STARTER_TREE = {
                 id: 'root_default',
                 name: 'Root Ancestor',
@@ -573,6 +589,25 @@
                 showToast('Created ' + title);
             }
 
+            function openEditTreeTitleModal() {
+                const active = getActiveTree();
+                document.getElementById('editTreeTitleInput').value = active.title || '';
+                document.getElementById('editTreeModalOverlay').classList.add('active');
+            }
+
+            function confirmEditTreeTitle() {
+                const newTitle = document.getElementById('editTreeTitleInput').value.trim();
+                if (!newTitle) {
+                    showToast('Title cannot be empty');
+                    return;
+                }
+                const active = getActiveTree();
+                active.title = newTitle;
+                saveAndRender();
+                document.getElementById('editTreeModalOverlay').classList.remove('active');
+                showToast('Renamed tree to ' + newTitle);
+            }
+
             function saveData() {
                 try {
                     localStorage.setItem('family_studio_app_data', JSON.stringify(appStorage));
@@ -612,7 +647,6 @@
                 const jsonStr = JSON.stringify(appStorage, null, 2);
                 const fileName = (appStorage.trees[appStorage.activeTreeId].title || 'family_tree').toLowerCase().replace(/\s+/g, '_') + '_backup.json';
                 
-                // Use data URL for better webview compatibility
                 const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
                 const link = document.createElement('a');
                 link.setAttribute('href', dataUri);
@@ -702,6 +736,12 @@
                 document.getElementById('treeSelect').addEventListener('change', function(e) {
                     appStorage.activeTreeId = e.target.value;
                     saveAndRender();
+                });
+
+                document.getElementById('editTreeTitleBtn').addEventListener('click', openEditTreeTitleModal);
+                document.getElementById('editTreeConfirm').addEventListener('click', confirmEditTreeTitle);
+                document.getElementById('editTreeCancel').addEventListener('click', function() {
+                    document.getElementById('editTreeModalOverlay').classList.remove('active');
                 });
 
                 document.getElementById('newTreeBtn').addEventListener('click', function() {
