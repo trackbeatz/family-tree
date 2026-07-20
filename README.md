@@ -24,6 +24,6 @@ Since **Family Tree Studio** is a standalone, single-file web application, no bu
 
 1. **Clone the Repository**
    ```bash
-   git clone [https://github.com/your-username/family-tree-studio.git](https://github.com/your-username/family-tree-studio.git)
+   git clone [https://github.com/trackbeatz/family-tree](https://github.com/trackbeatz/family-tree)
    cd family-tree-studio
 # family-tree
