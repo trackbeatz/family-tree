@@ -171,7 +171,7 @@
         .children-wrapper { position: relative; width: 100%; }
 
         .person {
-            width: 115px; background: white; border-radius: var(--radius);
+            width: 125px; background: white; border-radius: var(--radius);
             padding: 6px 4px 5px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
             border: 1px solid #dcd0c0; transition: var(--transition);
             position: relative; z-index: 2; flex-shrink: 0;
@@ -194,10 +194,10 @@
         }
         .role { font-size: 8.5px; color: #776b5e; display: block; font-weight: 400; }
 
-        .actions { display: flex; justify-content: center; gap: 3px; margin: 4px 0 2px; }
+        .actions { display: flex; justify-content: center; gap: 2px; margin: 4px 0 2px; flex-wrap: wrap; }
         .actions button {
             background: #f0ebe3; border: none; color: var(--branch);
-            font-size: 10px; padding: 4px 6px; border-radius: 20px;
+            font-size: 10px; padding: 4px 5px; border-radius: 20px;
             cursor: pointer; transition: var(--transition);
             display: inline-flex; align-items: center; justify-content: center;
         }
@@ -229,8 +229,8 @@
         }
         .modal h3 { margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 8px; font-size: 1.1rem; }
         .modal label { display: block; margin: 10px 0 4px; font-weight: 600; font-size: 0.85rem; }
-        .modal input, .modal textarea { width: 100%; padding: 9px 12px; border: 1px solid #ccc; border-radius: 10px; font-family: monospace, inherit; }
-        .modal textarea { height: 120px; font-size: 0.78rem; resize: none; background: #fafafa; }
+        .modal input, .modal select, .modal textarea { width: 100%; padding: 9px 12px; border: 1px solid #ccc; border-radius: 10px; font-family: inherit; font-size: 0.9rem; }
+        .modal textarea { height: 120px; font-size: 0.78rem; resize: none; background: #fafafa; font-family: monospace; }
         .modal .btn-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; flex-wrap: wrap; }
         .modal .btn-row button { padding: 8px 16px; border-radius: 40px; border: none; cursor: pointer; background: #eee; font-size: 0.85rem; }
         .modal .btn-row button.primary { background: var(--gold); color: white; }
@@ -276,6 +276,20 @@
             <div class="btn-row">
                 <button id="editTreeCancel">Cancel</button>
                 <button class="primary" id="editTreeConfirm">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reroute / Move Parent Modal -->
+    <div class="modal-overlay" id="moveModalOverlay">
+        <div class="modal">
+            <h3><i class="fas fa-random"></i> Reroute / Change Parent</h3>
+            <p style="font-size: 0.82rem; color: #666; margin-bottom: 8px;" id="moveMemberDesc">Select a new parent for this member.</p>
+            <label for="moveParentSelect">New Parent / Superior:</label>
+            <select id="moveParentSelect"></select>
+            <div class="btn-row">
+                <button id="moveCancel">Cancel</button>
+                <button class="primary" id="moveConfirm">Reroute Member</button>
             </div>
         </div>
     </div>
@@ -329,7 +343,6 @@
 
     <script>
         (function() {
-            // Clean tree template
             const DEFAULT_STARTER_TREE = {
                 id: 'root_default',
                 name: 'Root Ancestor',
@@ -352,6 +365,7 @@
             let modalMode = 'add';
             let pendingTargetId = null;
             let imageTargetId = null;
+            let moveSourceId = null;
 
             function generateId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
             function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -374,6 +388,53 @@
                     }
                 }
                 return null;
+            }
+
+            function getSubtreeIds(root) {
+                let ids = [root.id];
+                if (root.children) {
+                    root.children.forEach(c => { ids = ids.concat(getSubtreeIds(c)); });
+                }
+                if (root.spouses) {
+                    root.spouses.forEach(s => { ids = ids.concat(getSubtreeIds(s)); });
+                }
+                return ids;
+            }
+
+            function removeNode(root, targetId) {
+                if (!root) return false;
+                if (root.children) {
+                    const idx = root.children.findIndex(c => c.id === targetId);
+                    if (idx !== -1) {
+                        root.children.splice(idx, 1);
+                        return true;
+                    }
+                    for (let c of root.children) {
+                        if (removeNode(c, targetId)) return true;
+                    }
+                }
+                if (root.spouses) {
+                    const idx = root.spouses.findIndex(s => s.id === targetId);
+                    if (idx !== -1) {
+                        root.spouses.splice(idx, 1);
+                        return true;
+                    }
+                    for (let s of root.spouses) {
+                        if (removeNode(s, targetId)) return true;
+                    }
+                }
+                return false;
+            }
+
+            function getAllNodes(root) {
+                let nodes = [{ id: root.id, name: root.name, role: root.role }];
+                if (root.children) {
+                    root.children.forEach(c => { nodes = nodes.concat(getAllNodes(c)); });
+                }
+                if (root.spouses) {
+                    root.spouses.forEach(s => { nodes = nodes.concat(getAllNodes(s)); });
+                }
+                return nodes;
             }
 
             function renderTree() {
@@ -450,6 +511,7 @@
                     '<div class="actions">' +
                         '<button class="edit-person-btn" data-id="' + node.id + '" title="Edit Details"><i class="fas fa-pen"></i></button>' +
                         '<button class="upload-img-btn" data-id="' + node.id + '" title="Upload Photo"><i class="fas fa-camera"></i></button>' +
+                        '<button class="move-person-btn" data-id="' + node.id + '" title="Reroute / Change Parent"><i class="fas fa-random"></i></button>' +
                         '<button class="add-child-btn" data-parentid="' + node.id + '" title="Add Child"><i class="fas fa-plus"></i></button>' +
                     '</div>' +
                 '</div>';
@@ -494,6 +556,68 @@
                     if (id) triggerImageUpload(id);
                     return;
                 }
+
+                if (target.classList.contains('move-person-btn')) {
+                    const id = target.getAttribute('data-id');
+                    if (id) openMoveModal(id);
+                    return;
+                }
+            }
+
+            function openMoveModal(nodeId) {
+                const active = getActiveTree();
+                if (nodeId === active.data.id) {
+                    showToast("Cannot move the root ancestor");
+                    return;
+                }
+
+                moveSourceId = nodeId;
+                const sourceNode = findNode(active.data, nodeId);
+                if (!sourceNode) return;
+
+                document.getElementById('moveMemberDesc').textContent = 'Reroute "' + sourceNode.name + '" to a new parent node:';
+                
+                const excludedIds = getSubtreeIds(sourceNode);
+                const allNodes = getAllNodes(active.data);
+                const eligibleParents = allNodes.filter(n => !excludedIds.includes(n.id));
+
+                const select = document.getElementById('moveParentSelect');
+                select.innerHTML = '';
+                
+                eligibleParents.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.name + (p.role ? ' (' + p.role + ')' : '');
+                    select.appendChild(opt);
+                });
+
+                document.getElementById('moveModalOverlay').classList.add('active');
+            }
+
+            function confirmReroute() {
+                if (!moveSourceId) return;
+                const newParentId = document.getElementById('moveParentSelect').value;
+                if (!newParentId) return;
+
+                const active = getActiveTree();
+                const sourceNode = clone(findNode(active.data, moveSourceId));
+                const targetParent = findNode(active.data, newParentId);
+
+                if (!sourceNode || !targetParent) {
+                    showToast("Rerouting failed");
+                    return;
+                }
+
+                // Detach from current parent
+                removeNode(active.data, moveSourceId);
+
+                // Attach to new parent
+                if (!targetParent.children) targetParent.children = [];
+                targetParent.children.push(sourceNode);
+
+                saveAndRender();
+                document.getElementById('moveModalOverlay').classList.remove('active');
+                showToast("Rerouted " + sourceNode.name);
             }
 
             function openAddModal(parentId) {
@@ -742,6 +866,11 @@
                 document.getElementById('editTreeConfirm').addEventListener('click', confirmEditTreeTitle);
                 document.getElementById('editTreeCancel').addEventListener('click', function() {
                     document.getElementById('editTreeModalOverlay').classList.remove('active');
+                });
+
+                document.getElementById('moveConfirm').addEventListener('click', confirmReroute);
+                document.getElementById('moveCancel').addEventListener('click', function() {
+                    document.getElementById('moveModalOverlay').classList.remove('active');
                 });
 
                 document.getElementById('newTreeBtn').addEventListener('click', function() {
