@@ -1,923 +1,1716 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes"/>
-    <title>Family Tree Studio</title>
-    
-    <!-- Mobile App / PWA Meta Tags -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#2b1e16">
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Family Tree Studio","short_name":"FamilyTree","start_url":".","display":"standalone","background_color":"#fdfaf1","theme_color":"#2b1e16","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3898/3898082.png","sizes":"512x512","type":"image/png"}]}'>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#2b1e16" />
+<title>Family Tree Studio</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+        --parchment: #fdfaf1;
+        --ink: #2b1e16;
+        --gold: #c5a059;
+        --branch: #6d4c41;
+        --danger: #c0392b;
+        --shadow: 0 8px 24px rgba(0,0,0,.08);
+        --radius: 14px;
+        --transition: .2s ease;
+    }
+    html, body {
+        height: 100%;
+        touch-action: pan-x pan-y;
+        -webkit-text-size-adjust: 100%;
+        -moz-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+    body {
+        font-family: 'Garamond','Georgia',serif;
+        background: var(--parchment);
+        color: var(--ink);
+        padding: 15px 10px 30px;
+        min-height: 100vh;
+        overscroll-behavior: none;
+        -webkit-user-select: none; user-select: none;
+    }
+    input, textarea, select { -webkit-user-select: text; user-select: text; }
+    button { touch-action: manipulation; font-family: inherit; }
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-            --parchment: #fdfaf1;
-            --ink: #2b1e16;
-            --gold: #c5a059;
-            --branch: #6d4c41;
-            --danger: #c0392b;
-            --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            --radius: 14px;
-            --transition: 0.2s ease;
+    #splashScreen {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: radial-gradient(circle at 50% 38%, #fffdf8 0%, #f4e9d6 52%, #e3d2b6 100%);
+        transition: opacity .6s ease, visibility .6s ease;
+    }
+    #splashScreen.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+    .splash-logo { font-size: 74px; line-height: 1; animation: sprout 1.8s ease-in-out infinite; }
+    @keyframes sprout {
+        0%,100% { transform: scale(1) translateY(0); }
+        50%     { transform: scale(1.08) translateY(-7px); }
+    }
+    .splash-title { margin-top: 16px; font-size: 1.55rem; letter-spacing: 2px; color: #2b1e16; font-weight: 400; }
+    .splash-sub { margin-top: 8px; font-size: .72rem; letter-spacing: 3.5px; text-transform: uppercase; color: #9c8a72; }
+    .splash-bar { margin-top: 30px; width: 150px; height: 4px; border-radius: 4px; background: rgba(197,160,89,.25); overflow: hidden; }
+    .splash-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg,#c5a059,#8d6b32); animation: fillbar 5s ease forwards; }
+    @keyframes fillbar { to { width: 100%; } }
+    .splash-ver { position: absolute; bottom: 26px; font-size: .68rem; letter-spacing: 2px; color: #b3a288; }
+
+    .app-header {
+        display: flex; flex-wrap: wrap; justify-content: space-between;
+        align-items: center; margin-bottom: 15px;
+        border-bottom: 2px solid var(--gold); padding-bottom: 12px; gap: 10px;
+    }
+    .app-header h1 { font-weight: 400; letter-spacing: 1px; font-size: 1.4rem; }
+    .tree-selector-bar {
+        display: flex; align-items: center; gap: 8px; width: 100%;
+        margin-bottom: 10px; background: rgba(197,160,89,.15);
+        padding: 8px 12px; border-radius: 10px; flex-wrap: wrap;
+    }
+    .tree-selector-bar select {
+        flex: 1; min-width: 140px; padding: 6px 10px; border-radius: 6px;
+        border: 1px solid var(--branch); background: #fff;
+        font-family: inherit; font-size: .95rem;
+    }
+    .toolbar { display: flex; gap: 6px; flex-wrap: wrap; }
+    .toolbar button, .tree-selector-bar button {
+        background: #fff; border: 1px solid var(--branch);
+        padding: 7px 12px; border-radius: 40px; font-size: .82rem;
+        cursor: pointer; transition: var(--transition);
+        display: inline-flex; align-items: center; gap: 6px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.02);
+    }
+    .toolbar button:hover, .tree-selector-bar button:hover {
+        background: var(--gold); color: #fff; border-color: var(--gold);
+    }
+    .toolbar button.btn-danger { border-color: var(--danger); color: var(--danger); }
+    .toolbar button.btn-danger:hover { background: var(--danger); color: #fff; }
+    .ic { display: inline-flex; }
+
+    /* ============ RESPONSIVE TREE VIEWPORT ============ */
+    .tree-container {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding: 15px 8px 20px;
+        background: rgba(255,252,245,.5);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        min-height: 60vh;
+        scrollbar-width: thin;
+        touch-action: pan-x pan-y;
+    }
+    .tree-container.needs-scroll { overflow-x: auto; }
+
+    .tree-scaler {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+        transition: height .28s ease;
+    }
+
+    .tree {
+        width: -webkit-max-content;
+        width: max-content;
+        min-width: 0;
+        display: flex;
+        justify-content: center;
+        padding: 8px;
+        transform-origin: top left;
+        transition: transform .28s ease;
+        will-change: transform;
+    }
+    .tree ul, .tree .children-wrapper {
+        padding-top: 20px; position: relative;
+        display: flex !important; flex-direction: row !important;
+        justify-content: center !important; flex-wrap: nowrap !important;
+        list-style: none; margin: 0; padding-left: 0;
+    }
+    .tree li {
+        text-align: center; position: relative;
+        padding: 20px 6px 0 6px; display: flex; flex-direction: column;
+        align-items: center; flex: 0 0 auto !important;
+    }
+    .tree ul ul::before, .tree ul .children-wrapper::before {
+        content: ''; position: absolute; top: 0; left: 50%;
+        border-left: 2px solid var(--branch); height: 20px; width: 0;
+    }
+    .tree li::before, .tree li::after {
+        content: ''; position: absolute; top: 0; right: 50%;
+        border-top: 2px solid var(--branch); width: 50%; height: 20px;
+    }
+    .tree li::after { right: auto; left: 50%; border-left: 2px solid var(--branch); }
+    .tree li:only-child::after, .tree li:only-child::before { display: none; }
+    .tree li:only-child { padding-top: 0; }
+    .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
+    .tree li:last-child::before { border-right: 2px solid var(--branch); border-radius: 0 5px 0 0; }
+    .tree li:first-child::after { border-radius: 5px 0 0 0; }
+
+    .spouse-group {
+        display: flex !important; flex-direction: row !important;
+        flex-wrap: nowrap !important; justify-content: center !important;
+        align-items: center !important; gap: 10px !important;
+        position: relative; padding: 6px 10px;
+        background: rgba(255,252,245,.6);
+        border: 1px dashed var(--gold); border-radius: 12px; margin-bottom: 5px;
+    }
+    .children-wrapper { position: relative; width: 100%; }
+
+    .person {
+        width: 130px; background: #fff; border-radius: var(--radius);
+        padding: 6px 4px 5px; box-shadow: 0 4px 10px rgba(0,0,0,.06);
+        border: 1px solid #dcd0c0; transition: var(--transition);
+        position: relative; z-index: 2; flex-shrink: 0;
+        cursor: pointer;
+    }
+    .person:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.1); }
+    .person.tapped { animation: tapPulse .4s ease; }
+    @keyframes tapPulse {
+        0%   { transform: scale(1); }
+        45%  { transform: scale(1.10); box-shadow: 0 12px 26px rgba(197,160,89,.45); border-color: var(--gold); }
+        100% { transform: scale(1); }
+    }
+    .person .frame {
+        width: 55px; height: 65px; margin: 0 auto 4px;
+        border: 2px solid var(--branch);
+        border-radius: 50% 50% 40% 40% / 60% 60% 30% 30%;
+        background: #f5ede4; overflow: hidden; display: flex;
+        align-items: center; justify-content: center;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23b7a690"><circle cx="50" cy="40" r="20"/><circle cx="50" cy="85" r="35"/></svg>');
+        background-size: 55%; background-position: center 60%; background-repeat: no-repeat;
+    }
+    .person .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .name-box {
+        background: #fcf9f2; border: 1px solid #d6cbbc;
+        padding: 3px 3px 4px; font-size: 11px; font-weight: 600;
+        border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0,0,0,.02);
+        word-wrap: break-word;
+    }
+    .role { font-size: 8.5px; color: #776b5e; display: block; font-weight: 400; }
+    .lifespan {
+        font-size: 9px; color: #8a7c6b; display: block;
+        font-weight: 500; letter-spacing: .3px; margin-top: 2px;
+        font-style: italic;
+    }
+    .lifespan .dash { color: var(--gold); font-weight: 700; font-style: normal; }
+
+    .actions { display: flex; justify-content: center; gap: 3px; margin: 4px 0 2px; flex-wrap: wrap; }
+    .actions button {
+        background: #f0ebe3; border: none; color: var(--branch);
+        padding: 4px; border-radius: 20px; cursor: pointer;
+        transition: var(--transition); min-width: 19px; min-height: 19px;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .actions button:hover { background: var(--gold); color: #fff; }
+    .actions button.danger-btn:hover { background: var(--danger); color: #fff; }
+
+    .collapse-toggle {
+        background: rgba(255,255,255,.9); border: 1px solid var(--branch);
+        color: var(--branch); cursor: pointer; padding: 3px 12px;
+        transition: var(--transition); margin: 4px 0; border-radius: 20px;
+        z-index: 3; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .collapse-toggle:hover { color: #fff; background: var(--gold); border-color: var(--gold); }
+
+    .collapsed > ul, .collapsed > .children-wrapper { display: none !important; }
+    .collapsed .collapse-toggle .fa-chevron-up { display: none !important; }
+    .collapse-toggle .chev-down { display: none; }
+    .collapsed .collapse-toggle .chev-down { display: inline-flex; }
+    .collapse-toggle .chev-up { display: inline-flex; }
+
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,.45);
+        -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 999; visibility: hidden; opacity: 0; transition: .2s;
+        padding: 16px;
+    }
+    .modal-overlay.active { visibility: visible; opacity: 1; }
+    .modal {
+        background: #fff; padding: 22px 20px; border-radius: 20px;
+        max-width: 400px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,.25);
+        max-height: 90vh; overflow-y: auto;
+    }
+    .modal h3 {
+        margin-bottom: 12px; border-bottom: 1px solid #ddd;
+        padding-bottom: 8px; font-size: 1.1rem;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .modal label { display: block; margin: 10px 0 4px; font-weight: 600; font-size: .85rem; }
+    .modal input, .modal select, .modal textarea {
+        width: 100%; padding: 10px 12px; border: 1px solid #ccc;
+        border-radius: 10px; font-family: inherit; font-size: .9rem;
+        background: #fff; color: var(--ink);
+    }
+    .modal input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 42px; }
+    .modal textarea { height: 100px; font-size: .72rem; resize: none; background: #fafafa; font-family: monospace; }
+    .modal p.hint { font-size: .82rem; color: #666; margin-bottom: 8px; line-height: 1.4; }
+    .modal .btn-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; flex-wrap: wrap; }
+    .modal .btn-row button {
+        padding: 9px 16px; border-radius: 40px; border: none; cursor: pointer;
+        background: #eee; font-size: .85rem; display: inline-flex;
+        align-items: center; gap: 6px; transition: var(--transition);
+    }
+    .modal .btn-row button:hover { background: #e0e0e0; }
+    .modal .btn-row button.primary { background: var(--gold); color: #fff; }
+    .modal .btn-row button.primary:hover { background: #b08d47; }
+    .modal .btn-row button.danger { background: var(--danger); color: #fff; }
+    .modal .btn-row button.danger:hover { background: #a5301f; }
+    .modal .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal .row-2 label { margin-top: 10px; }
+
+    /* ============ ENLARGED PERSON DETAIL MODAL ============ */
+    .person-detail-modal {
+        max-width: 350px;
+        padding: 26px 22px 20px;
+        position: relative;
+        text-align: center;
+        animation: popIn .3s cubic-bezier(.2,.9,.3,1.45);
+    }
+    @keyframes popIn {
+        0%   { transform: scale(.7); opacity: 0; }
+        60%  { transform: scale(1.04); opacity: 1; }
+        100% { transform: scale(1); }
+    }
+    .detail-close {
+        position: absolute; top: 10px; right: 10px;
+        width: 34px; height: 34px; border-radius: 50%;
+        border: none; background: #f0ebe3; color: var(--branch);
+        font-size: 20px; line-height: 1; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: var(--transition); font-family: inherit;
+    }
+    .detail-close:hover { background: var(--danger); color: #fff; }
+    .detail-frame {
+        width: 140px; height: 160px; margin: 6px auto 14px;
+        border: 3px solid var(--branch);
+        border-radius: 50% 50% 40% 40% / 60% 60% 30% 30%;
+        background: #f5ede4; overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23b7a690"><circle cx="50" cy="40" r="20"/><circle cx="50" cy="85" r="35"/></svg>');
+        background-size: 55%; background-position: center 60%; background-repeat: no-repeat;
+        box-shadow: 0 8px 20px rgba(109,76,65,.15);
+    }
+    .detail-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .detail-name {
+        font-size: 1.45rem; font-weight: 600; color: var(--ink);
+        margin-bottom: 3px; letter-spacing: .3px;
+        word-wrap: break-word; line-height: 1.2;
+    }
+    .detail-role {
+        font-size: .82rem; color: #8a7c6b; letter-spacing: 1px;
+        text-transform: uppercase; margin-bottom: 10px;
+        min-height: 1em;
+    }
+    .detail-life {
+        display: inline-block;
+        background: rgba(197,160,89,.14);
+        border: 1px solid rgba(197,160,89,.35);
+        color: #7a5c2c; font-size: .85rem; font-weight: 600;
+        font-style: italic; letter-spacing: .5px;
+        padding: 5px 14px; border-radius: 30px;
+        margin-bottom: 12px;
+    }
+    .detail-life .dash { color: var(--gold); font-weight: 700; font-style: normal; }
+    .detail-dates {
+        font-size: .85rem; color: #5c5045; line-height: 1.6;
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        background: #fbf8f2;
+        border-radius: 12px;
+        border: 1px solid #ece2d2;
+        text-align: left;
+    }
+    .detail-dates div { padding: 2px 0; }
+    .detail-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 6px;
+    }
+    .detail-action-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        gap: 6px; padding: 10px 8px; border-radius: 12px;
+        border: 1px solid #dcd0c0; background: #fff;
+        color: var(--branch); font-family: inherit;
+        font-size: .82rem; font-weight: 600; cursor: pointer;
+        transition: var(--transition);
+        touch-action: manipulation;
+    }
+    .detail-action-btn:hover,
+    .detail-action-btn:active {
+        background: var(--gold); color: #fff; border-color: var(--gold);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(197,160,89,.3);
+    }
+    .detail-action-btn.danger { color: var(--danger); border-color: rgba(192,57,43,.4); }
+    .detail-action-btn.danger:hover,
+    .detail-action-btn.danger:active {
+        background: var(--danger); color: #fff; border-color: var(--danger);
+        box-shadow: 0 4px 12px rgba(192,57,43,.3);
+    }
+
+    .pick-file-btn {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        width: 100%; padding: 14px; margin: 4px 0 8px;
+        background: var(--gold); color: #fff; border: none;
+        border-radius: 12px; font-size: 1rem; font-weight: 600;
+        cursor: pointer; font-family: inherit; transition: var(--transition);
+    }
+    .pick-file-btn:hover { background: #b08d47; }
+
+    .or-divider {
+        text-align: center; color: #aaa; font-size: .72rem;
+        letter-spacing: 1px; margin: 14px 0 6px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .or-divider::before, .or-divider::after {
+        content: ''; flex: 1; height: 1px; background: #e0e0e0;
+    }
+
+    .toast {
+        position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+        background: #2b1e16; color: #f5ede4; padding: 11px 22px;
+        border-radius: 60px; font-size: .88rem; box-shadow: 0 6px 20px rgba(0,0,0,.2);
+        opacity: 0; transition: opacity .3s; z-index: 10000;
+        pointer-events: none; max-width: 88%; text-align: center;
+        white-space: pre-line;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ================= PRINT / PDF STYLES ================= */
+    @media print {
+        @page { size: A3 landscape; margin: 8mm; }
+        html, body {
+            background: #fff !important;
+            padding: 0 !important;
+            min-height: auto !important;
         }
-        body {
-            font-family: 'Garamond', 'Georgia', serif;
-            background: var(--parchment);
-            color: var(--ink);
-            padding: 15px 10px 30px;
-            min-height: 100vh;
-        }
-        .app-header {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            border-bottom: 2px solid var(--gold);
-            padding-bottom: 12px;
-            gap: 10px;
-        }
-        .app-header h1 {
-            font-weight: 400;
-            letter-spacing: 1px;
-            font-size: 1.4rem;
-        }
-        .tree-selector-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            margin-bottom: 10px;
-            background: rgba(197, 160, 89, 0.15);
-            padding: 8px 12px;
-            border-radius: 10px;
-            flex-wrap: wrap;
-        }
-        .tree-selector-bar select {
-            flex: 1;
-            min-width: 140px;
-            padding: 6px 10px;
-            border-radius: 6px;
-            border: 1px solid var(--branch);
-            background: white;
-            font-family: inherit;
-            font-size: 0.95rem;
-        }
-        .toolbar {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .toolbar button, .tree-selector-bar button {
-            background: white;
-            border: 1px solid var(--branch);
-            padding: 6px 12px;
-            border-radius: 40px;
-            font-family: inherit;
-            font-size: 0.82rem;
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
-        }
-        .toolbar button:hover, .tree-selector-bar button:hover {
-            background: var(--gold);
-            color: white;
-            border-color: var(--gold);
-        }
-        .toolbar button.btn-danger {
-            border-color: var(--danger);
-            color: var(--danger);
-        }
-        .toolbar button.btn-danger:hover {
-            background: var(--danger);
-            color: white;
-        }
+        #splashScreen,
+        .app-header,
+        .tree-selector-bar,
+        .modal-overlay,
+        .toast,
+        .actions,
+        .collapse-toggle { display: none !important; }
 
         .tree-container {
-            width: 100%;
-            overflow-x: auto;
-            overflow-y: hidden;
-            -webkit-overflow-scrolling: touch;
-            padding: 15px 10px 25px;
-            background: rgba(255, 252, 245, 0.5);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            min-height: 550px;
+            overflow: visible !important;
+            box-shadow: none !important;
+            background: #fff !important;
+            padding: 10px !important;
+            border-radius: 0 !important;
+            min-height: auto !important;
+            width: auto !important;
         }
-        
+        .tree-scaler {
+            height: auto !important;
+            width: auto !important;
+            overflow: visible !important;
+            display: block !important;
+        }
         .tree {
-            display: flex;
-            justify-content: center;
-            width: max-content;
-            min-width: 100%;
-            padding: 10px;
+            position: static !important;
+            transform: none !important;
+            width: max-content !important;
+            padding: 6px !important;
         }
-
-        .tree ul, .tree .children-wrapper {
-            padding-top: 20px;
-            position: relative;
-            display: flex !important;
-            flex-direction: row !important;
-            justify-content: center !important;
-            flex-wrap: nowrap !important;
-            list-style: none;
-            margin: 0;
-            padding-left: 0;
-        }
-
-        .tree li {
-            text-align: center;
-            position: relative;
-            padding: 20px 6px 0 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex: 0 0 auto !important;
-        }
-        
-        .tree ul ul::before, .tree ul .children-wrapper::before {
-            content: ''; position: absolute; top: 0; left: 50%;
-            border-left: 2px solid var(--branch); height: 20px; width: 0;
-        }
-
-        .tree li::before, .tree li::after {
-            content: ''; position: absolute; top: 0; right: 50%;
-            border-top: 2px solid var(--branch); width: 50%; height: 20px;
-        }
-        .tree li::after { right: auto; left: 50%; border-left: 2px solid var(--branch); }
-        .tree li:only-child::after, .tree li:only-child::before { display: none; }
-        .tree li:only-child { padding-top: 0; }
-        .tree li:first-child::before, .tree li:last-child::after { border: 0 none; }
-        .tree li:last-child::before { border-right: 2px solid var(--branch); border-radius: 0 5px 0 0; }
-        .tree li:first-child::after { border-radius: 5px 0 0 0; }
-
-        .spouse-group {
-            display: flex !important; flex-direction: row !important;
-            flex-wrap: nowrap !important; justify-content: center !important;
-            align-items: center !important; gap: 10px !important;
-            position: relative; padding: 6px 10px;
-            background: rgba(255, 252, 245, 0.6);
-            border: 1px dashed var(--gold); border-radius: 12px; margin-bottom: 5px;
-        }
-
-        .children-wrapper { position: relative; width: 100%; }
-
         .person {
-            width: 125px; background: white; border-radius: var(--radius);
-            padding: 6px 4px 5px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
-            border: 1px solid #dcd0c0; transition: var(--transition);
-            position: relative; z-index: 2; flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,.08) !important;
+            border: 1px solid #999 !important;
+            page-break-inside: avoid;
         }
-        .person:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1); }
-        .person .frame {
-            width: 55px; height: 65px; margin: 0 auto 4px;
-            border: 2px solid var(--branch);
-            border-radius: 50% 50% 40% 40% / 60% 60% 30% 30%;
-            background: #f5ede4; overflow: hidden; display: flex;
-            align-items: center; justify-content: center;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23b7a690"><circle cx="50" cy="40" r="20"/><circle cx="50" cy="85" r="35"/></svg>');
-            background-size: 55%; background-position: center 60%; background-repeat: no-repeat;
-        }
-        .person .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .name-box {
-            background: #fcf9f2; border: 1px solid #d6cbbc;
-            padding: 3px 2px; font-size: 11px; font-weight: 600;
-            border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02); word-wrap: break-word;
-        }
-        .role { font-size: 8.5px; color: #776b5e; display: block; font-weight: 400; }
-
-        .actions { display: flex; justify-content: center; gap: 2px; margin: 4px 0 2px; flex-wrap: wrap; }
-        .actions button {
-            background: #f0ebe3; border: none; color: var(--branch);
-            font-size: 10px; padding: 4px 5px; border-radius: 20px;
-            cursor: pointer; transition: var(--transition);
-            display: inline-flex; align-items: center; justify-content: center;
-        }
-        .actions button:hover { background: var(--gold); color: white; }
-
-        .collapse-toggle {
-            background: rgba(255, 255, 255, 0.9) !important;
-            border: 1px solid var(--branch) !important; color: var(--branch) !important;
-            font-size: 11px !important; cursor: pointer !important; padding: 3px 10px !important;
-            transition: var(--transition) !important; margin: 4px 0 !important; border-radius: 20px !important; z-index: 3;
-        }
-        .collapse-toggle:hover { color: white !important; background: var(--gold) !important; border-color: var(--gold) !important; }
-
-        .collapsed > ul, .collapsed > .children-wrapper { display: none !important; }
-        .collapsed .collapse-toggle .fa-chevron-up { display: none !important; }
-        .collapse-toggle .fa-chevron-down { display: none !important; }
-        .collapsed .collapse-toggle .fa-chevron-down { display: inline-block !important; }
-        .collapse-toggle .fa-chevron-up { display: inline-block !important; }
-
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45);
-            backdrop-filter: blur(4px); display: flex; align-items: center;
-            justify-content: center; z-index: 999; visibility: hidden; opacity: 0; transition: 0.2s;
-        }
-        .modal-overlay.active { visibility: visible; opacity: 1; }
-        .modal {
-            background: white; padding: 22px 20px; border-radius: 20px;
-            max-width: 400px; width: 92%; box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-        }
-        .modal h3 { margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 8px; font-size: 1.1rem; }
-        .modal label { display: block; margin: 10px 0 4px; font-weight: 600; font-size: 0.85rem; }
-        .modal input, .modal select, .modal textarea { width: 100%; padding: 9px 12px; border: 1px solid #ccc; border-radius: 10px; font-family: inherit; font-size: 0.9rem; }
-        .modal textarea { height: 120px; font-size: 0.78rem; resize: none; background: #fafafa; font-family: monospace; }
-        .modal .btn-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; flex-wrap: wrap; }
-        .modal .btn-row button { padding: 8px 16px; border-radius: 40px; border: none; cursor: pointer; background: #eee; font-size: 0.85rem; }
-        .modal .btn-row button.primary { background: var(--gold); color: white; }
-
-        .file-input-hidden { display: none; }
-        .toast {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background: #2b1e16; color: #f5ede4; padding: 10px 22px; border-radius: 60px;
-            font-size: 0.9rem; box-shadow: 0 6px 20px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.3s;
-            z-index: 1000; pointer-events: none;
-        }
-        .toast.show { opacity: 1; }
-    </style>
+        .collapsed > ul,
+        .collapsed > .children-wrapper { display: flex !important; }
+        .spouse-group { border-color: #666 !important; }
+    }
+</style>
 </head>
 <body>
 
-    <div class="app-header">
-        <div><h1 id="appHeaderTitle">🌳 Family Tree Studio</h1></div>
-        <div class="toolbar">
-            <button id="exportBtn"><i class="fas fa-download"></i> Export</button>
-            <button id="importBtn"><i class="fas fa-upload"></i> Import</button>
-            <button id="resetBtn" class="btn-danger"><i class="fas fa-trash-alt"></i> Clear Storage</button>
-        </div>
-    </div>
+<div id="splashScreen">
+    <div class="splash-logo">🌳</div>
+    <div class="splash-title">Family Tree Studio</div>
+    <div class="splash-sub">Preserving your lineage</div>
+    <div class="splash-bar"><span></span></div>
+    <div class="splash-ver">v3.0</div>
+</div>
 
-    <div class="tree-selector-bar">
-        <label for="treeSelect"><i class="fas fa-sitemap"></i> Tree:</label>
-        <select id="treeSelect"></select>
-        <button id="editTreeTitleBtn" title="Rename active family tree"><i class="fas fa-pen"></i> Edit Title</button>
-        <button id="newTreeBtn"><i class="fas fa-plus"></i> New Tree</button>
+<div class="app-header">
+    <div><h1 id="appHeaderTitle">🌳 Family Tree Studio</h1></div>
+    <div class="toolbar">
+        <button id="exportBtn"><span class="ic" data-ic="download"></span> Export</button>
+        <button id="importBtn"><span class="ic" data-ic="upload"></span> Import</button>
+        <button id="resetBtn" class="btn-danger"><span class="ic" data-ic="trash"></span> Clear</button>
     </div>
+</div>
 
-    <div class="tree-container" id="mainTree">
+<div class="tree-selector-bar">
+    <label for="treeSelect" style="font-size:.85rem;white-space:nowrap;">🌲 Tree:</label>
+    <select id="treeSelect"></select>
+    <button id="editTreeTitleBtn" title="Rename active family tree"><span class="ic" data-ic="edit"></span> Edit Title</button>
+    <button id="newTreeBtn"><span class="ic" data-ic="plus"></span> New Tree</button>
+</div>
+
+<div class="tree-container" id="mainTree">
+    <div class="tree-scaler" id="treeScaler">
         <div class="tree" id="treeRoot"></div>
     </div>
+</div>
 
-    <!-- Edit Tree Title Modal -->
-    <div class="modal-overlay" id="editTreeModalOverlay">
-        <div class="modal">
-            <h3><i class="fas fa-edit"></i> Edit Tree Name</h3>
-            <label>Family Tree Name</label>
-            <input type="text" id="editTreeTitleInput" placeholder="e.g. My Family Tree" />
-            <div class="btn-row">
-                <button id="editTreeCancel">Cancel</button>
-                <button class="primary" id="editTreeConfirm">Save</button>
-            </div>
+<!-- ============ ENLARGED PERSON DETAIL ============ -->
+<div class="modal-overlay" id="personDetailOverlay">
+    <div class="modal person-detail-modal">
+        <button class="detail-close" id="detailCloseBtn" aria-label="Close">×</button>
+        <div class="detail-frame" id="detailFrame"></div>
+        <div class="detail-name" id="detailName">Name</div>
+        <div class="detail-role" id="detailRole"></div>
+        <div class="detail-life" id="detailLife" style="display:none;"></div>
+        <div class="detail-dates" id="detailDates" style="display:none;"></div>
+        <div class="detail-actions" id="detailActions"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editTreeModalOverlay">
+    <div class="modal">
+        <h3>✏️ Edit Tree Name</h3>
+        <label>Family Tree Name</label>
+        <input type="text" id="editTreeTitleInput" placeholder="e.g. My Family Tree" />
+        <div class="btn-row">
+            <button id="editTreeCancel">Cancel</button>
+            <button class="primary" id="editTreeConfirm">Save</button>
         </div>
     </div>
+</div>
 
-    <!-- Reroute / Move Parent Modal -->
-    <div class="modal-overlay" id="moveModalOverlay">
-        <div class="modal">
-            <h3><i class="fas fa-random"></i> Reroute / Change Parent</h3>
-            <p style="font-size: 0.82rem; color: #666; margin-bottom: 8px;" id="moveMemberDesc">Select a new parent for this member.</p>
-            <label for="moveParentSelect">New Parent / Superior:</label>
-            <select id="moveParentSelect"></select>
-            <div class="btn-row">
-                <button id="moveCancel">Cancel</button>
-                <button class="primary" id="moveConfirm">Reroute Member</button>
-            </div>
+<div class="modal-overlay" id="moveModalOverlay">
+    <div class="modal">
+        <h3>🔀 Reroute / Change Parent</h3>
+        <p class="hint" id="moveMemberDesc">Select a new parent for this member.</p>
+        <label for="moveParentSelect">New Parent</label>
+        <select id="moveParentSelect"></select>
+        <div class="btn-row">
+            <button id="moveCancel">Cancel</button>
+            <button class="primary" id="moveConfirm">Reroute</button>
         </div>
     </div>
+</div>
 
-    <!-- Child / Person Edit Modal -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
-            <h3 id="modalTitle"><i class="fas fa-user-plus"></i> Add Member</h3>
-            <label>Name</label>
-            <input type="text" id="personNameInput" placeholder="e.g. John Doe" />
-            <label>Role / Title (optional)</label>
-            <input type="text" id="personRoleInput" placeholder="e.g. Son, Daughter, Spouse" />
-            <div class="btn-row">
-                <button id="modalCancel">Cancel</button>
-                <button class="primary" id="modalConfirm">Save</button>
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3 id="modalTitle">➕ Add Member</h3>
+        <label>Name</label>
+        <input type="text" id="personNameInput" placeholder="e.g. John Doe" />
+        <label>Role / Title (optional)</label>
+        <input type="text" id="personRoleInput" placeholder="e.g. Son, Daughter, Spouse" />
+        <div class="row-2">
+            <div>
+                <label>Date of Birth</label>
+                <input type="date" id="personBirthInput" />
+            </div>
+            <div>
+                <label>Date of Death</label>
+                <input type="date" id="personDeathInput" />
             </div>
         </div>
-    </div>
-
-    <!-- New Tree Modal -->
-    <div class="modal-overlay" id="newTreeModalOverlay">
-        <div class="modal">
-            <h3><i class="fas fa-folder-plus"></i> Create New Tree</h3>
-            <label>Family Tree Name</label>
-            <input type="text" id="newTreeTitleInput" placeholder="e.g. Smith Family Tree" />
-            <label>Root Patriarch / Ancestor Name</label>
-            <input type="text" id="rootPersonNameInput" placeholder="e.g. Root Ancestor" />
-            <div class="btn-row">
-                <button id="newTreeCancel">Cancel</button>
-                <button class="primary" id="newTreeConfirm">Create</button>
-            </div>
+        <div class="btn-row">
+            <button id="modalCancel">Cancel</button>
+            <button class="primary" id="modalConfirm">Save</button>
         </div>
     </div>
+</div>
 
-    <!-- Export Modal -->
-    <div class="modal-overlay" id="exportModalOverlay">
-        <div class="modal">
-            <h3><i class="fas fa-file-export"></i> Export Backup</h3>
-            <p style="font-size:0.82rem; color:#555; margin-bottom:10px;">Tap <b>Download File</b> or click <b>Copy Text</b> to manually paste and save your JSON file anywhere.</p>
-            <textarea id="exportJsonTextarea" readonly></textarea>
-            <div class="btn-row">
-                <button id="exportCloseBtn">Close</button>
-                <button id="copyJsonBtn"><i class="fas fa-copy"></i> Copy Text</button>
-                <button class="primary" id="downloadJsonFileBtn"><i class="fas fa-download"></i> Download File</button>
-            </div>
+<div class="modal-overlay" id="newTreeModalOverlay">
+    <div class="modal">
+        <h3>📁 Create New Tree</h3>
+        <label>Family Tree Name</label>
+        <input type="text" id="newTreeTitleInput" placeholder="e.g. Smith Family Tree" />
+        <label>Root Ancestor Name</label>
+        <input type="text" id="rootPersonNameInput" placeholder="e.g. Root Ancestor" />
+        <div class="btn-row">
+            <button id="newTreeCancel">Cancel</button>
+            <button class="primary" id="newTreeConfirm">Create</button>
         </div>
     </div>
+</div>
 
-    <input type="file" id="imageUpload" accept="image/*" class="file-input-hidden" />
-    <div id="toast" class="toast">Saved</div>
+<div class="modal-overlay" id="exportModalOverlay">
+    <div class="modal">
+        <h3>📤 Export & Share</h3>
+        <p class="hint">Save your tree as a JSON backup, print to PDF, or share it with others.</p>
+        <p class="hint" id="exportSizeHint" style="color:#a06a2c;font-weight:600;"></p>
+        <textarea id="exportJsonTextarea"></textarea>
+        <div class="btn-row" style="justify-content:stretch;">
+            <button id="exportCloseBtn">Close</button>
+            <button id="copyJsonBtn"><span class="ic" data-ic="copy"></span> Copy Text</button>
+            <button id="shareJsonBtn"><span class="ic" data-ic="share"></span> Share</button>
+            <button id="downloadJsonFileBtn"><span class="ic" data-ic="download"></span> Save JSON</button>
+            <button class="primary" id="savePdfBtn"><span class="ic" data-ic="pdf"></span> Save as PDF</button>
+        </div>
+    </div>
+</div>
 
-    <script>
-        (function() {
-            const DEFAULT_STARTER_TREE = {
-                id: 'root_default',
-                name: 'Root Ancestor',
-                role: 'Family Head',
-                children: []
-            };
+<div class="modal-overlay" id="pasteImportOverlay">
+    <div class="modal">
+        <h3>📥 Import Tree</h3>
+        <p class="hint">Tap below to browse your device and pick any <b>.json</b> backup.</p>
 
-            let appStorage = {
-                activeTreeId: 'default_tree',
-                trees: {
-                    'default_tree': {
-                        id: 'default_tree',
-                        title: 'My Family Tree',
-                        data: DEFAULT_STARTER_TREE,
-                        images: {}
-                    }
-                }
-            };
+        <button id="pickImportFileBtn" class="pick-file-btn">
+            <span class="ic" data-ic="upload" data-size="18"></span>
+            Browse Files
+        </button>
 
-            let modalMode = 'add';
-            let pendingTargetId = null;
-            let imageTargetId = null;
-            let moveSourceId = null;
+        <div class="or-divider">OR PASTE TEXT</div>
 
-            function generateId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
-            function clone(o) { return JSON.parse(JSON.stringify(o)); }
+        <textarea id="pasteImportTextarea" placeholder='{"activeTreeId":"...","trees":{...}}'></textarea>
+        <div class="btn-row">
+            <button id="pasteImportCancel">Cancel</button>
+            <button class="primary" id="pasteImportConfirm">Import Text</button>
+        </div>
+    </div>
+</div>
 
-            function getActiveTree() { return appStorage.trees[appStorage.activeTreeId]; }
+<div class="modal-overlay" id="confirmOverlay">
+    <div class="modal">
+        <h3 id="confirmTitle">Confirm</h3>
+        <p class="hint" id="confirmMessage" style="font-size:.9rem;color:#444;"></p>
+        <div class="btn-row">
+            <button id="confirmCancel">Cancel</button>
+            <button class="danger" id="confirmOk">Confirm</button>
+        </div>
+    </div>
+</div>
 
-            function findNode(root, id) {
-                if (!root) return null;
-                if (root.id === id) return root;
-                if (root.children) {
-                    for (let c of root.children) {
-                        const found = findNode(c, id);
-                        if (found) return found;
-                    }
-                }
-                if (root.spouses) {
-                    for (let s of root.spouses) {
-                        const found = findNode(s, id);
-                        if (found) return found;
-                    }
-                }
-                return null;
+<div id="imageUploadContainer" style="display:none;"></div>
+<div id="importUploadContainer" style="display:none;"></div>
+
+<div id="toast" class="toast">Saved</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var ICON_PATHS = {
+        edit:      'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+        camera:    'M9 2L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 13.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm0 1.8a5 5 0 1 0 0-10 5 5 0 0 0 0 10z',
+        personAdd: 'M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+        plus:      'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+        swap:      'M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z',
+        trash:     'M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
+        chevUp:    'M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z',
+        chevDown:  'M12 16l6-6-1.41-1.41L12 13.17l-4.59-4.58L6 10z',
+        download:  'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
+        upload:    'M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z',
+        copy:      'M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z',
+        share:     'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z',
+        pdf:       'M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z'
+    };
+
+    function icon(name, size) {
+        var p = ICON_PATHS[name] || '';
+        size = size || 12;
+        return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size +
+               '" fill="currentColor" style="display:block;pointer-events:none"><path d="' + p + '"/></svg>';
+    }
+
+    function hydrateIcons() {
+        var nodes = document.querySelectorAll('[data-ic]');
+        for (var i = 0; i < nodes.length; i++) {
+            var n = nodes[i];
+            n.innerHTML = icon(n.getAttribute('data-ic'), parseInt(n.getAttribute('data-size') || '12', 10));
+        }
+    }
+
+    var STORAGE_KEY = 'family_studio_app_data';
+
+    var DEFAULT_STARTER_TREE = {
+        id: 'root_default',
+        name: 'Root Ancestor',
+        role: 'Family Head',
+        birth: '',
+        death: '',
+        children: []
+    };
+
+    var appStorage = {
+        activeTreeId: 'default_tree',
+        trees: {
+            'default_tree': {
+                id: 'default_tree',
+                title: 'My Family Tree',
+                data: JSON.parse(JSON.stringify(DEFAULT_STARTER_TREE)),
+                images: {}
             }
+        }
+    };
 
-            function getSubtreeIds(root) {
-                let ids = [root.id];
-                if (root.children) {
-                    root.children.forEach(c => { ids = ids.concat(getSubtreeIds(c)); });
-                }
-                if (root.spouses) {
-                    root.spouses.forEach(s => { ids = ids.concat(getSubtreeIds(s)); });
-                }
-                return ids;
+    var modalMode = 'add';
+    var pendingTargetId = null;
+    var imageTargetId = null;
+    var moveSourceId = null;
+    var confirmCallback = null;
+    var bootTime = Date.now();
+    var storageWorks = false;
+
+    function generateId() { return 'id_' + Math.random().toString(36).substr(2, 9); }
+    function clone(o) { return JSON.parse(JSON.stringify(o)); }
+    function $(id) { return document.getElementById(id); }
+
+    function showToast(msg) {
+        var el = $('toast');
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(el._timer);
+        el._timer = setTimeout(function () { el.classList.remove('show'); }, 3500);
+    }
+
+    function openModal(id) { var m = $(id); if (m) m.classList.add('active'); }
+    function closeModal(id) { var m = $(id); if (m) m.classList.remove('active'); }
+
+    function showConfirm(title, message, okLabel, onOk) {
+        $('confirmTitle').textContent = title;
+        $('confirmMessage').textContent = message;
+        $('confirmOk').textContent = okLabel || 'Confirm';
+        confirmCallback = onOk;
+        openModal('confirmOverlay');
+    }
+
+    function yearOf(iso) {
+        if (!iso) return '';
+        var m = String(iso).match(/^(\d{4})/);
+        return m ? m[1] : String(iso);
+    }
+
+    function prettyDate(iso) {
+        if (!iso) return '';
+        var m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!m) return String(iso);
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var mi = parseInt(m[2], 10) - 1;
+        if (mi < 0 || mi > 11) return String(iso);
+        return parseInt(m[3], 10) + ' ' + months[mi] + ' ' + m[1];
+    }
+
+    function lifespanTag(node) {
+        var b = yearOf(node.birth);
+        var d = yearOf(node.death);
+        if (!b && !d) return '';
+        if (b && d) return b + ' <span class="dash">–</span> ' + d;
+        if (b) return 'b. ' + b;
+        return 'd. ' + d;
+    }
+
+    /* ============================================================
+       AUTO-FIT ENGINE
+       ============================================================ */
+    var MIN_FIT_SCALE = 0.28;
+    var fitTimer = null;
+
+    function scheduleFit() {
+        if (fitTimer) clearTimeout(fitTimer);
+        fitTimer = setTimeout(function () { fitTimer = null; fitTree(); }, 40);
+    }
+    window.__scheduleFit = scheduleFit;
+
+    function fitTree() {
+        var scaler = $('treeScaler');
+        var tree = $('treeRoot');
+        var container = $('mainTree');
+        if (!scaler || !tree || !container) return;
+
+        scaler.style.width = '';
+
+        var naturalW = tree.offsetWidth;
+        var naturalH = tree.offsetHeight;
+        if (!naturalW || !naturalH) return;
+
+        var availW = scaler.clientWidth;
+        if (!availW) availW = container.clientWidth;
+        if (!availW) return;
+
+        var scale = availW / naturalW;
+        if (scale > 1) scale = 1;
+
+        var clipped = false;
+        if (scale < MIN_FIT_SCALE) {
+            scale = MIN_FIT_SCALE;
+            clipped = true;
+        }
+
+        var scaledW = naturalW * scale;
+
+        if (clipped) {
+            scaler.style.width = Math.ceil(scaledW) + 'px';
+            tree.style.transformOrigin = 'top left';
+            tree.style.transform = 'scale(' + scale.toFixed(4) + ')';
+            container.classList.add('needs-scroll');
+        } else {
+            var tx = (availW - scaledW) / 2;
+            tree.style.transformOrigin = 'top left';
+            tree.style.transform = 'translateX(' + tx.toFixed(2) + 'px) scale(' + scale.toFixed(4) + ')';
+            container.classList.remove('needs-scroll');
+        }
+
+        scaler.style.height = Math.ceil(naturalH * scale) + 'px';
+    }
+
+    /* ============================================================
+       BRIDGE (Android native)
+       ============================================================ */
+    var Bridge = {
+        ready: function () {
+            return (typeof window.AndroidBridge !== 'undefined') && window.AndroidBridge !== null;
+        },
+        saveFile: function (fileName, content) {
+            if (this.ready() && typeof window.AndroidBridge.saveFile === 'function') {
+                try { window.AndroidBridge.saveFile(fileName, content); return true; }
+                catch (e) { return false; }
             }
-
-            function removeNode(root, targetId) {
-                if (!root) return false;
-                if (root.children) {
-                    const idx = root.children.findIndex(c => c.id === targetId);
-                    if (idx !== -1) {
-                        root.children.splice(idx, 1);
-                        return true;
-                    }
-                    for (let c of root.children) {
-                        if (removeNode(c, targetId)) return true;
-                    }
-                }
-                if (root.spouses) {
-                    const idx = root.spouses.findIndex(s => s.id === targetId);
-                    if (idx !== -1) {
-                        root.spouses.splice(idx, 1);
-                        return true;
-                    }
-                    for (let s of root.spouses) {
-                        if (removeNode(s, targetId)) return true;
-                    }
-                }
-                return false;
+            return false;
+        },
+        copyText: function (text) {
+            if (this.ready() && typeof window.AndroidBridge.copyToClipboard === 'function') {
+                try { window.AndroidBridge.copyToClipboard(text); return true; }
+                catch (e) { return false; }
             }
-
-            function getAllNodes(root) {
-                let nodes = [{ id: root.id, name: root.name, role: root.role }];
-                if (root.children) {
-                    root.children.forEach(c => { nodes = nodes.concat(getAllNodes(c)); });
-                }
-                if (root.spouses) {
-                    root.spouses.forEach(s => { nodes = nodes.concat(getAllNodes(s)); });
-                }
-                return nodes;
+            return false;
+        },
+        pickFile: function () {
+            if (this.ready() && typeof window.AndroidBridge.pickFile === 'function') {
+                try { window.AndroidBridge.pickFile(); return true; }
+                catch (e) { return false; }
             }
-
-            function renderTree() {
-                const active = getActiveTree();
-                const rootEl = document.getElementById('treeRoot');
-                if (!rootEl || !active || !active.data) return;
-                
-                document.getElementById('appHeaderTitle').textContent = '🌳 ' + active.title;
-                rootEl.innerHTML = '<ul>' + buildTreeHTML(active.data, active.images) + '</ul>';
-                updateTreeDropdown();
-                attachDelegatedEvents();
+            return false;
+        },
+        shareText: function (subject, text) {
+            if (this.ready() && typeof window.AndroidBridge.shareText === 'function') {
+                try { window.AndroidBridge.shareText(subject, text); return true; }
+                catch (e) { return false; }
             }
-
-            function updateTreeDropdown() {
-                const select = document.getElementById('treeSelect');
-                select.innerHTML = '';
-                Object.keys(appStorage.trees).forEach(id => {
-                    const option = document.createElement('option');
-                    option.value = id;
-                    option.textContent = appStorage.trees[id].title;
-                    if (id === appStorage.activeTreeId) option.selected = true;
-                    select.appendChild(option);
-                });
+            return false;
+        },
+        saveAsPdf: function (jobName) {
+            if (this.ready() && typeof window.AndroidBridge.saveAsPdf === 'function') {
+                try { window.AndroidBridge.saveAsPdf(jobName); return true; }
+                catch (e) { return false; }
             }
+            return false;
+        }
+    };
 
-            function buildTreeHTML(node, images) {
-                if (!node || !node.id) return '';
+    window.__onBridgeMessage = function (msg) { showToast(String(msg)); };
 
-                if (node.spouses && node.spouses.length > 0) {
-                    const allSpouses = [node, ...node.spouses];
-                    const spouseCards = allSpouses.map(sp => buildPersonCard(sp, images)).join('');
-
-                    let allChildren = [];
-                    node.spouses.forEach(sp => {
-                        if (sp.children && sp.children.length > 0) {
-                            sp.children.forEach(child => allChildren.push(child));
-                        }
-                    });
-
-                    const hasChildren = allChildren.length > 0;
-                    const childrenHTML = hasChildren ?
-                        '<ul class="children-wrapper">' + allChildren.map(c => buildTreeHTML(c, images)).join('') + '</ul>' : '';
-
-                    const toggleBtn = hasChildren ?
-                        '<button class="collapse-toggle" data-id="' + node.id + '" aria-label="Toggle children">' +
-                            '<i class="fas fa-chevron-up"></i><i class="fas fa-chevron-down"></i>' +
-                        '</button>' : '';
-
-                    return '<li data-nodeid="' + node.id + '" class="' + (hasChildren ? 'has-children' : '') + '">' +
-                        '<div class="spouse-group">' + spouseCards + '</div>' +
-                        toggleBtn + childrenHTML +
-                    '</li>';
-                }
-
-                if (node.children && node.children.length > 0) {
-                    const childHTML = '<ul>' + node.children.map(c => buildTreeHTML(c, images)).join('') + '</ul>';
-                    const toggleBtn = '<button class="collapse-toggle" data-id="' + node.id + '" aria-label="Toggle children">' +
-                        '<i class="fas fa-chevron-up"></i><i class="fas fa-chevron-down"></i>' +
-                    '</button>';
-                    return '<li data-nodeid="' + node.id + '" class="has-children">' +
-                        buildPersonCard(node, images) + toggleBtn + childHTML +
-                    '</li>';
-                }
-
-                return '<li data-nodeid="' + node.id + '">' + buildPersonCard(node, images) + '</li>';
-            }
-
-            function buildPersonCard(node, images) {
-                const imgSrc = images[node.id] || '';
-                const imgTag = imgSrc ? '<img src="' + imgSrc + '" alt="' + node.name + '" />' : '';
-                return '<div class="person">' +
-                    '<div class="frame">' + imgTag + '</div>' +
-                    '<div class="name-box">' + (node.name || 'Unnamed') + ' <span class="role">' + (node.role || '') + '</span></div>' +
-                    '<div class="actions">' +
-                        '<button class="edit-person-btn" data-id="' + node.id + '" title="Edit Details"><i class="fas fa-pen"></i></button>' +
-                        '<button class="upload-img-btn" data-id="' + node.id + '" title="Upload Photo"><i class="fas fa-camera"></i></button>' +
-                        '<button class="move-person-btn" data-id="' + node.id + '" title="Reroute / Change Parent"><i class="fas fa-random"></i></button>' +
-                        '<button class="add-child-btn" data-parentid="' + node.id + '" title="Add Child"><i class="fas fa-plus"></i></button>' +
-                    '</div>' +
-                '</div>';
-            }
-
-            function toggleCollapse(nodeId) {
-                const li = document.querySelector('li[data-nodeid="' + nodeId + '"]');
-                if (li) li.classList.toggle('collapsed');
-            }
-
-            function attachDelegatedEvents() {
-                const container = document.getElementById('mainTree');
-                if (!container) return;
-                container.removeEventListener('click', handleContainerClick);
-                container.addEventListener('click', handleContainerClick);
-            }
-
-            function handleContainerClick(e) {
-                const target = e.target.closest('button');
-                if (!target) return;
-
-                if (target.classList.contains('collapse-toggle')) {
-                    const id = target.getAttribute('data-id');
-                    if (id) toggleCollapse(id);
-                    return;
-                }
-
-                if (target.classList.contains('add-child-btn')) {
-                    const parentId = target.getAttribute('data-parentid');
-                    if (parentId) openAddModal(parentId);
-                    return;
-                }
-
-                if (target.classList.contains('edit-person-btn')) {
-                    const id = target.getAttribute('data-id');
-                    if (id) openEditModal(id);
-                    return;
-                }
-
-                if (target.classList.contains('upload-img-btn')) {
-                    const id = target.getAttribute('data-id');
-                    if (id) triggerImageUpload(id);
-                    return;
-                }
-
-                if (target.classList.contains('move-person-btn')) {
-                    const id = target.getAttribute('data-id');
-                    if (id) openMoveModal(id);
-                    return;
-                }
-            }
-
-            function openMoveModal(nodeId) {
-                const active = getActiveTree();
-                if (nodeId === active.data.id) {
-                    showToast("Cannot move the root ancestor");
-                    return;
-                }
-
-                moveSourceId = nodeId;
-                const sourceNode = findNode(active.data, nodeId);
-                if (!sourceNode) return;
-
-                document.getElementById('moveMemberDesc').textContent = 'Reroute "' + sourceNode.name + '" to a new parent node:';
-                
-                const excludedIds = getSubtreeIds(sourceNode);
-                const allNodes = getAllNodes(active.data);
-                const eligibleParents = allNodes.filter(n => !excludedIds.includes(n.id));
-
-                const select = document.getElementById('moveParentSelect');
-                select.innerHTML = '';
-                
-                eligibleParents.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.textContent = p.name + (p.role ? ' (' + p.role + ')' : '');
-                    select.appendChild(opt);
-                });
-
-                document.getElementById('moveModalOverlay').classList.add('active');
-            }
-
-            function confirmReroute() {
-                if (!moveSourceId) return;
-                const newParentId = document.getElementById('moveParentSelect').value;
-                if (!newParentId) return;
-
-                const active = getActiveTree();
-                const sourceNode = clone(findNode(active.data, moveSourceId));
-                const targetParent = findNode(active.data, newParentId);
-
-                if (!sourceNode || !targetParent) {
-                    showToast("Rerouting failed");
-                    return;
-                }
-
-                // Detach from current parent
-                removeNode(active.data, moveSourceId);
-
-                // Attach to new parent
-                if (!targetParent.children) targetParent.children = [];
-                targetParent.children.push(sourceNode);
-
-                saveAndRender();
-                document.getElementById('moveModalOverlay').classList.remove('active');
-                showToast("Rerouted " + sourceNode.name);
-            }
-
-            function openAddModal(parentId) {
-                modalMode = 'add';
-                pendingTargetId = parentId;
-                document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus"></i> Add Child';
-                document.getElementById('personNameInput').value = '';
-                document.getElementById('personRoleInput').value = '';
-                document.getElementById('modalOverlay').classList.add('active');
-            }
-
-            function openEditModal(nodeId) {
-                modalMode = 'edit';
-                pendingTargetId = nodeId;
-                const active = getActiveTree();
-                const node = findNode(active.data, nodeId);
-                if (!node) return;
-
-                document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-edit"></i> Edit Member';
-                document.getElementById('personNameInput').value = node.name || '';
-                document.getElementById('personRoleInput').value = node.role || '';
-                document.getElementById('modalOverlay').classList.add('active');
-            }
-
-            function confirmPersonModal() {
-                const name = document.getElementById('personNameInput').value.trim();
-                const role = document.getElementById('personRoleInput').value.trim();
-                if (!name) { showToast('Please enter a name'); return; }
-
-                const active = getActiveTree();
-
-                if (modalMode === 'add') {
-                    let parent = findNode(active.data, pendingTargetId);
-                    if (!parent) { showToast('Error: parent not found'); return; }
-
-                    if (parent.spouses && parent.spouses.length > 0) {
-                        if (!parent.spouses[0].children) parent.spouses[0].children = [];
-                        parent.spouses[0].children.push({ id: generateId(), name, role, children: [] });
-                    } else {
-                        if (!parent.children) parent.children = [];
-                        parent.children.push({ id: generateId(), name, role, children: [] });
-                    }
-                    showToast('Added ' + name);
-                } else if (modalMode === 'edit') {
-                    let node = findNode(active.data, pendingTargetId);
-                    if (node) {
-                        node.name = name;
-                        node.role = role;
-                        showToast('Updated ' + name);
-                    }
-                }
-
-                saveAndRender();
-                document.getElementById('modalOverlay').classList.remove('active');
-            }
-
-            function triggerImageUpload(nodeId) {
-                imageTargetId = nodeId;
-                document.getElementById('imageUpload').click();
-            }
-
-            function handleImageUpload(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    if (imageTargetId) {
-                        const active = getActiveTree();
-                        active.images[imageTargetId] = ev.target.result;
-                        saveAndRender();
-                        showToast('Image updated');
-                    }
-                    imageTargetId = null;
-                };
-                reader.readAsDataURL(file);
-                e.target.value = '';
-            }
-
-            function createNewTree() {
-                const title = document.getElementById('newTreeTitleInput').value.trim() || 'New Family Tree';
-                const rootName = document.getElementById('rootPersonNameInput').value.trim() || 'Root Ancestor';
-                
-                const newId = 'tree_' + Date.now();
-                appStorage.trees[newId] = {
-                    id: newId,
-                    title: title,
-                    data: { id: 'root_' + newId, name: rootName, role: 'Family Head', children: [] },
-                    images: {}
-                };
-                appStorage.activeTreeId = newId;
-                saveAndRender();
-                document.getElementById('newTreeModalOverlay').classList.remove('active');
-                showToast('Created ' + title);
-            }
-
-            function openEditTreeTitleModal() {
-                const active = getActiveTree();
-                document.getElementById('editTreeTitleInput').value = active.title || '';
-                document.getElementById('editTreeModalOverlay').classList.add('active');
-            }
-
-            function confirmEditTreeTitle() {
-                const newTitle = document.getElementById('editTreeTitleInput').value.trim();
-                if (!newTitle) {
-                    showToast('Title cannot be empty');
-                    return;
-                }
-                const active = getActiveTree();
-                active.title = newTitle;
-                saveAndRender();
-                document.getElementById('editTreeModalOverlay').classList.remove('active');
-                showToast('Renamed tree to ' + newTitle);
-            }
-
-            function saveData() {
-                try {
-                    localStorage.setItem('family_studio_app_data', JSON.stringify(appStorage));
-                } catch(e) {
-                    console.warn('Storage saving error:', e);
-                }
-            }
-
-            function loadData() {
-                try {
-                    const raw = localStorage.getItem('family_studio_app_data');
-                    if (raw) {
-                        const parsed = JSON.parse(raw);
-                        if (parsed && parsed.trees && parsed.activeTreeId) {
-                            appStorage = parsed;
-                            return true;
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Storage read error:', e);
-                }
-                return false;
-            }
-
-            function saveAndRender() {
-                saveData();
-                renderTree();
-            }
-
-            function openExportModal() {
-                const jsonStr = JSON.stringify(appStorage, null, 2);
-                document.getElementById('exportJsonTextarea').value = jsonStr;
-                document.getElementById('exportModalOverlay').classList.add('active');
-            }
-
-            function downloadExportFile() {
-                const jsonStr = JSON.stringify(appStorage, null, 2);
-                const fileName = (appStorage.trees[appStorage.activeTreeId].title || 'family_tree').toLowerCase().replace(/\s+/g, '_') + '_backup.json';
-                
-                const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
-                const link = document.createElement('a');
-                link.setAttribute('href', dataUri);
-                link.setAttribute('download', fileName);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                showToast('Download started');
-            }
-
-            function copyExportJson() {
-                const textarea = document.getElementById('exportJsonTextarea');
-                textarea.select();
-                textarea.setSelectionRange(0, 99999);
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(textarea.value).then(() => {
-                        showToast('Copied to clipboard!');
-                    });
-                } else {
-                    document.execCommand('copy');
-                    showToast('Copied to clipboard!');
-                }
-            }
-
-            function importJSON(file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (data.trees && data.activeTreeId) {
-                            appStorage = data;
-                        } else if (data.tree) {
-                            const importId = 'imported_' + Date.now();
-                            appStorage.trees[importId] = {
-                                id: importId,
-                                title: data.tree.name ? data.tree.name + ' Tree' : 'Imported Family Tree',
-                                data: data.tree,
-                                images: data.images || {}
-                            };
-                            appStorage.activeTreeId = importId;
-                        } else {
-                            throw new Error('invalid format');
-                        }
-                        saveAndRender();
-                        showToast('Import successful');
-                    } catch (err) {
-                        showToast('Invalid JSON file');
-                    }
-                };
-                reader.readAsText(file);
-            }
-
-            function purgeStorage() {
-                if (confirm("Wipe all saved trees and start completely fresh?")) {
-                    localStorage.removeItem('family_studio_app_data');
-                    appStorage = {
-                        activeTreeId: 'default_tree',
-                        trees: {
-                            'default_tree': {
-                                id: 'default_tree',
-                                title: 'My Family Tree',
-                                data: clone(DEFAULT_STARTER_TREE),
-                                images: {}
-                            }
-                        }
-                    };
-                    saveAndRender();
-                    showToast('Cleared all storage');
-                }
-            }
-
-            function showToast(msg) {
-                const el = document.getElementById('toast');
-                if (!el) return;
-                el.textContent = msg;
-                el.classList.add('show');
-                clearTimeout(el._timer);
-                el._timer = setTimeout(() => el.classList.remove('show'), 2000);
-            }
-
-            function init() {
-                if (!loadData()) {
-                    saveData();
-                }
-                renderTree();
-
-                document.getElementById('treeSelect').addEventListener('change', function(e) {
-                    appStorage.activeTreeId = e.target.value;
-                    saveAndRender();
-                });
-
-                document.getElementById('editTreeTitleBtn').addEventListener('click', openEditTreeTitleModal);
-                document.getElementById('editTreeConfirm').addEventListener('click', confirmEditTreeTitle);
-                document.getElementById('editTreeCancel').addEventListener('click', function() {
-                    document.getElementById('editTreeModalOverlay').classList.remove('active');
-                });
-
-                document.getElementById('moveConfirm').addEventListener('click', confirmReroute);
-                document.getElementById('moveCancel').addEventListener('click', function() {
-                    document.getElementById('moveModalOverlay').classList.remove('active');
-                });
-
-                document.getElementById('newTreeBtn').addEventListener('click', function() {
-                    document.getElementById('newTreeTitleInput').value = '';
-                    document.getElementById('rootPersonNameInput').value = '';
-                    document.getElementById('newTreeModalOverlay').classList.add('active');
-                });
-                document.getElementById('newTreeConfirm').addEventListener('click', createNewTree);
-                document.getElementById('newTreeCancel').addEventListener('click', function() {
-                    document.getElementById('newTreeModalOverlay').classList.remove('active');
-                });
-
-                document.getElementById('modalConfirm').addEventListener('click', confirmPersonModal);
-                document.getElementById('modalCancel').addEventListener('click', () => {
-                    document.getElementById('modalOverlay').classList.remove('active');
-                });
-
-                document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
-                
-                // Export Modal bindings
-                document.getElementById('exportBtn').addEventListener('click', openExportModal);
-                document.getElementById('exportCloseBtn').addEventListener('click', () => {
-                    document.getElementById('exportModalOverlay').classList.remove('active');
-                });
-                document.getElementById('downloadJsonFileBtn').addEventListener('click', downloadExportFile);
-                document.getElementById('copyJsonBtn').addEventListener('click', copyExportJson);
-
-                document.getElementById('resetBtn').addEventListener('click', purgeStorage);
-                
-                document.getElementById('importBtn').addEventListener('click', function() {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'application/json';
-                    input.onchange = function(e) {
-                        if (e.target.files.length) importJSON(e.target.files[0]);
-                        input.remove();
-                    };
-                    input.click();
-                });
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
+    window.__onImportBase64 = function (b64) {
+        try {
+            var bin = atob(b64);
+            var bytes = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            var json;
+            if (typeof TextDecoder !== 'undefined') {
+                json = new TextDecoder('utf-8').decode(bytes);
             } else {
-                init();
+                json = decodeURIComponent(escape(bin));
             }
-        })();
-    </script>
+            var data = JSON.parse(json);
+            closeModal('pasteImportOverlay');
+            applyImport(data);
+        } catch (e) {
+            showToast('Import failed: ' + (e && e.message ? e.message : 'unknown'));
+        }
+    };
+
+    window.__onImportCancel = function () {
+        showToast('No file selected');
+    };
+
+    function getActiveTree() { return appStorage.trees[appStorage.activeTreeId]; }
+
+    function findNode(root, id) {
+        if (!root) return null;
+        if (root.id === id) return root;
+        var i;
+        if (root.children) for (i = 0; i < root.children.length; i++) {
+            var f = findNode(root.children[i], id);
+            if (f) return f;
+        }
+        if (root.spouses) for (i = 0; i < root.spouses.length; i++) {
+            var s = findNode(root.spouses[i], id);
+            if (s) return s;
+        }
+        return null;
+    }
+
+    function getSubtreeIds(root) {
+        var ids = [root.id], i;
+        if (root.children) for (i = 0; i < root.children.length; i++) ids = ids.concat(getSubtreeIds(root.children[i]));
+        if (root.spouses) for (i = 0; i < root.spouses.length; i++) ids = ids.concat(getSubtreeIds(root.spouses[i]));
+        return ids;
+    }
+
+    function removeNode(root, targetId) {
+        if (!root) return false;
+        var i;
+        if (root.children) {
+            for (i = 0; i < root.children.length; i++) if (root.children[i].id === targetId) {
+                root.children.splice(i, 1); return true;
+            }
+            for (i = 0; i < root.children.length; i++) if (removeNode(root.children[i], targetId)) return true;
+        }
+        if (root.spouses) {
+            for (i = 0; i < root.spouses.length; i++) if (root.spouses[i].id === targetId) {
+                root.spouses.splice(i, 1); return true;
+            }
+            for (i = 0; i < root.spouses.length; i++) if (removeNode(root.spouses[i], targetId)) return true;
+        }
+        return false;
+    }
+
+    function getAllNodes(root) {
+        var nodes = [{ id: root.id, name: root.name, role: root.role }], i;
+        if (root.children) for (i = 0; i < root.children.length; i++) nodes = nodes.concat(getAllNodes(root.children[i]));
+        if (root.spouses) for (i = 0; i < root.spouses.length; i++) nodes = nodes.concat(getAllNodes(root.spouses[i]));
+        return nodes;
+    }
+
+    function normalizeTree(node) {
+        if (!node) return;
+        if (!node.id) node.id = generateId();
+        if (typeof node.name !== 'string') node.name = 'Unnamed';
+        if (typeof node.role !== 'string') node.role = '';
+        if (typeof node.birth !== 'string') node.birth = '';
+        if (typeof node.death !== 'string') node.death = '';
+        if (!Array.isArray(node.children)) node.children = [];
+        if (!Array.isArray(node.spouses)) node.spouses = [];
+        node.children.forEach(normalizeTree);
+        node.spouses.forEach(normalizeTree);
+    }
+
+    function countPeople(node) {
+        var n = 1;
+        if (node.children) node.children.forEach(function(c){ n += countPeople(c); });
+        if (node.spouses) node.spouses.forEach(function(s){ n += countPeople(s); });
+        return n;
+    }
+
+    function renderTree() {
+        var active = getActiveTree();
+        var rootEl = $('treeRoot');
+        if (!rootEl || !active || !active.data) return;
+        if (!active.images) active.images = {};
+        $('appHeaderTitle').textContent = '🌳 ' + active.title;
+        rootEl.innerHTML = '<ul>' + buildTreeHTML(active.data, active.images) + '</ul>';
+        updateTreeDropdown();
+        scheduleFit();
+    }
+
+    function updateTreeDropdown() {
+        var select = $('treeSelect');
+        select.innerHTML = '';
+        Object.keys(appStorage.trees).forEach(function (id) {
+            var option = document.createElement('option');
+            option.value = id;
+            option.textContent = appStorage.trees[id].title;
+            if (id === appStorage.activeTreeId) option.selected = true;
+            select.appendChild(option);
+        });
+    }
+
+    function buildTreeHTML(node, images) {
+        if (!node || !node.id) return '';
+        var hasSpouses = node.spouses && node.spouses.length > 0;
+        var allChildren = [];
+        if (node.children) allChildren = allChildren.concat(node.children);
+        if (hasSpouses) node.spouses.forEach(function (sp) {
+            if (sp.children && sp.children.length) allChildren = allChildren.concat(sp.children);
+        });
+        var hasChildren = allChildren.length > 0;
+        var personBlock;
+        if (hasSpouses) {
+            var cards = [node].concat(node.spouses).map(function (sp) { return buildPersonCard(sp, images); }).join('');
+            personBlock = '<div class="spouse-group">' + cards + '</div>';
+        } else {
+            personBlock = buildPersonCard(node, images);
+        }
+        var toggleBtn = hasChildren ?
+            '<button class="collapse-toggle" data-id="' + node.id + '">' +
+                '<span class="chev-up">' + icon('chevUp', 13) + '</span>' +
+                '<span class="chev-down">' + icon('chevDown', 13) + '</span>' +
+            '</button>' : '';
+        var childrenHTML = hasChildren ?
+            '<ul class="children-wrapper">' +
+                allChildren.map(function (c) { return buildTreeHTML(c, images); }).join('') +
+            '</ul>' : '';
+        return '<li data-nodeid="' + node.id + '" class="' + (hasChildren ? 'has-children' : '') + '">' +
+            personBlock + toggleBtn + childrenHTML + '</li>';
+    }
+
+    function buildPersonCard(node, images) {
+        var imgSrc = images[node.id] || '';
+        var imgTag = imgSrc ? '<img src="' + imgSrc + '" alt="" onload="window.__scheduleFit&&window.__scheduleFit()" />' : '';
+        var life = lifespanTag(node);
+        var lifeTag = life ? '<span class="lifespan">' + life + '</span>' : '';
+        var tooltip = '';
+        if (node.birth || node.death) {
+            var parts = [];
+            if (node.birth) parts.push('Born: ' + prettyDate(node.birth));
+            if (node.death) parts.push('Died: ' + prettyDate(node.death));
+            tooltip = ' title="' + escapeHtml(parts.join('  •  ')) + '"';
+        }
+        return '<div class="person" data-personid="' + node.id + '"' + tooltip + '>' +
+            '<div class="frame">' + imgTag + '</div>' +
+            '<div class="name-box">' + escapeHtml(node.name || 'Unnamed') +
+                '<span class="role">' + escapeHtml(node.role || '') + '</span>' + lifeTag +
+            '</div>' +
+            '<div class="actions">' +
+                '<button class="edit-person-btn" data-id="' + node.id + '" title="Edit">' + icon('edit', 11) + '</button>' +
+                '<button class="upload-img-btn" data-id="' + node.id + '" title="Photo">' + icon('camera', 11) + '</button>' +
+                '<button class="add-spouse-btn" data-id="' + node.id + '" title="Add Spouse">' + icon('personAdd', 11) + '</button>' +
+                '<button class="add-child-btn" data-parentid="' + node.id + '" title="Add Child">' + icon('plus', 11) + '</button>' +
+                '<button class="move-person-btn" data-id="' + node.id + '" title="Change Parent">' + icon('swap', 11) + '</button>' +
+                '<button class="delete-person-btn danger-btn" data-id="' + node.id + '" title="Delete">' + icon('trash', 11) + '</button>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function toggleCollapse(nodeId) {
+        var li = document.querySelector('li[data-nodeid="' + nodeId + '"]');
+        if (li) {
+            li.classList.toggle('collapsed');
+            scheduleFit();
+        }
+    }
+
+    function findButton(el, boundary) {
+        while (el && el !== boundary) {
+            if (el.tagName === 'BUTTON') return el;
+            el = el.parentNode;
+        }
+        return null;
+    }
+
+    function findAncestorWithClass(el, className, boundary) {
+        while (el && el !== boundary) {
+            if (el.classList && el.classList.contains(className)) return el;
+            el = el.parentNode;
+        }
+        return null;
+    }
+
+    function handleContainerClick(e) {
+        var root = $('mainTree');
+        var btn = findButton(e.target, root);
+        if (btn) {
+            var cls = btn.classList;
+            if (cls.contains('collapse-toggle')) { toggleCollapse(btn.getAttribute('data-id')); return; }
+            if (cls.contains('add-child-btn'))   { openAddChildModal(btn.getAttribute('data-parentid')); return; }
+            if (cls.contains('add-spouse-btn'))  { openAddSpouseModal(btn.getAttribute('data-id')); return; }
+            if (cls.contains('edit-person-btn')) { openEditModal(btn.getAttribute('data-id')); return; }
+            if (cls.contains('upload-img-btn'))  { triggerImageUpload(btn.getAttribute('data-id')); return; }
+            if (cls.contains('move-person-btn')) { openMoveModal(btn.getAttribute('data-id')); return; }
+            if (cls.contains('delete-person-btn')) { askDelete(btn.getAttribute('data-id')); return; }
+            return;
+        }
+        /* Tap on a person card (not on an action button) -> enlarge */
+        var card = findAncestorWithClass(e.target, 'person', root);
+        if (card) {
+            var pid = card.getAttribute('data-personid');
+            if (pid) {
+                card.classList.add('tapped');
+                setTimeout(function () { card.classList.remove('tapped'); }, 420);
+                openPersonDetail(pid);
+            }
+        }
+    }
+
+    /* ============================================================
+       ENLARGED PERSON DETAIL
+       ============================================================ */
+    function openPersonDetail(nodeId) {
+        var active = getActiveTree();
+        if (!active) return;
+        var node = findNode(active.data, nodeId);
+        if (!node) return;
+
+        var imgSrc = (active.images && active.images[nodeId]) || '';
+        var frame = $('detailFrame');
+        frame.innerHTML = imgSrc ? '<img src="' + imgSrc + '" alt="" />' : '';
+
+        $('detailName').textContent = node.name || 'Unnamed';
+        $('detailRole').textContent = node.role || '';
+
+        var lifeEl = $('detailLife');
+        var life = lifespanTag(node);
+        if (life) {
+            lifeEl.innerHTML = life;
+            lifeEl.style.display = 'inline-block';
+        } else {
+            lifeEl.style.display = 'none';
+        }
+
+        var parts = [];
+        if (node.birth) parts.push('🎂  Born: ' + prettyDate(node.birth));
+        if (node.death) parts.push('🕊️  Died: ' + prettyDate(node.death));
+        var datesEl = $('detailDates');
+        if (parts.length) {
+            datesEl.innerHTML = parts.map(function (p) {
+                return '<div>' + escapeHtml(p) + '</div>';
+            }).join('');
+            datesEl.style.display = 'block';
+        } else {
+            datesEl.style.display = 'none';
+        }
+
+        var isRoot = (nodeId === active.data.id);
+        var html = '';
+        html += '<button class="detail-action-btn" data-action="edit" data-id="' + nodeId + '">' + icon('edit', 14) + ' Edit</button>';
+        html += '<button class="detail-action-btn" data-action="photo" data-id="' + nodeId + '">' + icon('camera', 14) + ' Photo</button>';
+        html += '<button class="detail-action-btn" data-action="spouse" data-id="' + nodeId + '">' + icon('personAdd', 14) + ' Spouse</button>';
+        html += '<button class="detail-action-btn" data-action="child" data-id="' + nodeId + '">' + icon('plus', 14) + ' Child</button>';
+        if (!isRoot) {
+            html += '<button class="detail-action-btn" data-action="move" data-id="' + nodeId + '">' + icon('swap', 14) + ' Reroute</button>';
+            html += '<button class="detail-action-btn danger" data-action="delete" data-id="' + nodeId + '">' + icon('trash', 14) + ' Delete</button>';
+        }
+        $('detailActions').innerHTML = html;
+
+        openModal('personDetailOverlay');
+    }
+
+    function handleDetailAction(e) {
+        var btn = findButton(e.target, $('detailActions'));
+        if (!btn) return;
+        var action = btn.getAttribute('data-action');
+        var id = btn.getAttribute('data-id');
+        if (!action || !id) return;
+        closeModal('personDetailOverlay');
+        setTimeout(function () {
+            if (action === 'edit')        openEditModal(id);
+            else if (action === 'photo')  triggerImageUpload(id);
+            else if (action === 'spouse') openAddSpouseModal(id);
+            else if (action === 'child')  openAddChildModal(id);
+            else if (action === 'move')   openMoveModal(id);
+            else if (action === 'delete') askDelete(id);
+        }, 190);
+    }
+
+    /* ============================================================
+       CRUD MODALS
+       ============================================================ */
+    function clearPersonInputs() {
+        $('personNameInput').value = '';
+        $('personRoleInput').value = '';
+        $('personBirthInput').value = '';
+        $('personDeathInput').value = '';
+    }
+
+    function openAddChildModal(parentId) {
+        modalMode = 'add'; pendingTargetId = parentId;
+        $('modalTitle').textContent = '➕ Add Child';
+        clearPersonInputs(); openModal('modalOverlay');
+    }
+
+    function openAddSpouseModal(nodeId) {
+        var active = getActiveTree();
+        var node = findNode(active.data, nodeId);
+        if (!node) return;
+        modalMode = 'addSpouse'; pendingTargetId = nodeId;
+        $('modalTitle').textContent = '💍 Add Spouse';
+        clearPersonInputs(); $('personRoleInput').value = 'Spouse';
+        openModal('modalOverlay');
+    }
+
+    function openEditModal(nodeId) {
+        var active = getActiveTree();
+        var node = findNode(active.data, nodeId);
+        if (!node) return;
+        modalMode = 'edit'; pendingTargetId = nodeId;
+        $('modalTitle').textContent = '✏️ Edit Member';
+        $('personNameInput').value = node.name || '';
+        $('personRoleInput').value = node.role || '';
+        $('personBirthInput').value = node.birth || '';
+        $('personDeathInput').value = node.death || '';
+        openModal('modalOverlay');
+    }
+
+    function confirmPersonModal() {
+        var name = $('personNameInput').value.trim();
+        var role = $('personRoleInput').value.trim();
+        var birth = $('personBirthInput').value || '';
+        var death = $('personDeathInput').value || '';
+        if (!name) { showToast('Please enter a name'); return; }
+        if (birth && death && death < birth) { showToast('Death date is before birth date'); return; }
+        var active = getActiveTree();
+        if (modalMode === 'add') {
+            var parent = findNode(active.data, pendingTargetId);
+            if (!parent) { showToast('Parent not found'); return; }
+            if (!parent.children) parent.children = [];
+            parent.children.push({ id: generateId(), name: name, role: role, birth: birth, death: death, children: [], spouses: [] });
+            showToast('Added ' + name);
+        } else if (modalMode === 'addSpouse') {
+            var spouseHost = findNode(active.data, pendingTargetId);
+            if (!spouseHost) { showToast('Member not found'); return; }
+            if (!spouseHost.spouses) spouseHost.spouses = [];
+            spouseHost.spouses.push({ id: generateId(), name: name, role: role || 'Spouse', birth: birth, death: death, children: [], spouses: [] });
+            showToast('Added spouse ' + name);
+        } else if (modalMode === 'edit') {
+            var node = findNode(active.data, pendingTargetId);
+            if (node) {
+                node.name = name; node.role = role; node.birth = birth; node.death = death;
+                showToast('Updated ' + name);
+            }
+        }
+        closeModal('modalOverlay');
+        saveAndRender();
+    }
+
+    function askDelete(nodeId) {
+        var active = getActiveTree();
+        if (nodeId === active.data.id) { showToast('Cannot delete the root ancestor'); return; }
+        var node = findNode(active.data, nodeId);
+        if (!node) return;
+        showConfirm('Delete Member',
+            'Delete "' + node.name + '" and everyone below them? This cannot be undone.',
+            'Delete',
+            function () {
+                removeNode(active.data, nodeId);
+                var imgs = active.images || {};
+                getSubtreeIds(node).forEach(function (id) { delete imgs[id]; });
+                saveAndRender();
+                showToast('Deleted ' + node.name);
+            });
+    }
+
+    function openMoveModal(nodeId) {
+        var active = getActiveTree();
+        if (nodeId === active.data.id) { showToast('Cannot move the root ancestor'); return; }
+        moveSourceId = nodeId;
+        var sourceNode = findNode(active.data, nodeId);
+        if (!sourceNode) return;
+        $('moveMemberDesc').textContent = 'Choose a new parent for "' + sourceNode.name + '".';
+        var excluded = getSubtreeIds(sourceNode);
+        var eligible = getAllNodes(active.data).filter(function (n) { return excluded.indexOf(n.id) === -1; });
+        var select = $('moveParentSelect');
+        select.innerHTML = '';
+        eligible.forEach(function (p) {
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name + (p.role ? ' (' + p.role + ')' : '');
+            select.appendChild(opt);
+        });
+        if (!eligible.length) { showToast('No valid parent available'); return; }
+        openModal('moveModalOverlay');
+    }
+
+    function confirmReroute() {
+        if (!moveSourceId) return;
+        var newParentId = $('moveParentSelect').value;
+        if (!newParentId) return;
+        var active = getActiveTree();
+        var sourceNode = clone(findNode(active.data, moveSourceId));
+        var targetParent = findNode(active.data, newParentId);
+        if (!sourceNode || !targetParent) { showToast('Rerouting failed'); return; }
+        removeNode(active.data, moveSourceId);
+        if (!targetParent.children) targetParent.children = [];
+        targetParent.children.push(sourceNode);
+        closeModal('moveModalOverlay');
+        saveAndRender();
+        showToast('Rerouted ' + sourceNode.name);
+    }
+
+    function triggerImageUpload(nodeId) {
+        imageTargetId = nodeId;
+        var container = $('imageUploadContainer');
+        container.innerHTML = '';
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.style.display = 'none';
+        input.onchange = function (e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) { container.innerHTML = ''; imageTargetId = null; return; }
+            compressImage(file, 320, 0.82, function (dataUrl) {
+                if (imageTargetId) {
+                    var active = getActiveTree();
+                    if (!active.images) active.images = {};
+                    active.images[imageTargetId] = dataUrl;
+                    if (!saveData()) { delete active.images[imageTargetId]; showToast('Not enough storage'); }
+                    else { renderTree(); showToast('Photo updated'); }
+                }
+                imageTargetId = null;
+                container.innerHTML = '';
+            });
+        };
+        container.appendChild(input);
+        input.click();
+    }
+
+    function compressImage(file, maxSide, quality, cb) {
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+            var raw = ev.target.result;
+            var img = new Image();
+            img.onload = function () {
+                try {
+                    var w = img.width, h = img.height;
+                    var scale = Math.min(1, maxSide / Math.max(w, h));
+                    w = Math.max(1, Math.round(w * scale));
+                    h = Math.max(1, Math.round(h * scale));
+                    var canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    cb(canvas.toDataURL('image/jpeg', quality));
+                } catch (err) { cb(raw); }
+            };
+            img.onerror = function () { cb(raw); };
+            img.src = raw;
+        };
+        reader.onerror = function () { cb(''); };
+        reader.readAsDataURL(file);
+    }
+
+    function saveData() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appStorage));
+            return true;
+        } catch (e) {
+            if (e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014)) {
+                showToast('Storage full — export & clear some photos');
+            } else {
+                showToast('Could not save: ' + (e && e.message ? e.message : 'unknown'));
+            }
+            return false;
+        }
+    }
+
+    function loadData() {
+        try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                var parsed = JSON.parse(raw);
+                if (parsed && parsed.trees && parsed.activeTreeId && parsed.trees[parsed.activeTreeId]) {
+                    appStorage = parsed;
+                    Object.keys(appStorage.trees).forEach(function (k) {
+                        var t = appStorage.trees[k];
+                        if (!t.images) t.images = {};
+                        normalizeTree(t.data);
+                    });
+                    return true;
+                }
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    function saveAndRender() { saveData(); renderTree(); }
+
+    function currentExportJson() { return JSON.stringify(appStorage); }
+
+    function currentExportName() {
+        var t = (appStorage.trees[appStorage.activeTreeId].title || 'family_tree');
+        return t.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_backup.json';
+    }
+
+    function openExportModal() {
+        var json = JSON.stringify(appStorage, null, 2);
+        $('exportJsonTextarea').value = json;
+        var kb = Math.round(json.length / 1024);
+        var hint = $('exportSizeHint');
+        if (hint) {
+            hint.textContent = 'Backup size: ~' + kb + ' KB (' + countPeople(getActiveTree().data) + ' people).';
+        }
+        openModal('exportModalOverlay');
+    }
+
+    function saveExportToDevice() {
+        var json = currentExportJson();
+        var fileName = currentExportName();
+        if (Bridge.saveFile(fileName, json)) return;
+        try {
+            var blob = new Blob([json], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url; a.download = fileName;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+            showToast('Download started');
+            return;
+        } catch (e) {}
+        try {
+            var link = document.createElement('a');
+            link.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(json));
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link); link.click();
+            document.body.removeChild(link);
+            showToast('Download started');
+            return;
+        } catch (e2) {}
+        showToast('Use "Copy Text" then paste into a file');
+    }
+
+    function copyExportJson() {
+        var text = currentExportJson();
+        if (Bridge.copyText(text)) return;
+        var ta = $('exportJsonTextarea');
+        ta.focus(); ta.select(); ta.setSelectionRange(0, 99999);
+        var done = function () { showToast('Copied to clipboard'); };
+        var fail = function () { showToast('Long-press the text area to Copy'); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, function () {
+                try { document.execCommand('copy') ? done() : fail(); }
+                catch (e) { fail(); }
+            });
+        } else {
+            try { document.execCommand('copy') ? done() : fail(); }
+            catch (e) { fail(); }
+        }
+    }
+
+    function shareExport() {
+        var text = currentExportJson();
+        var title = getActiveTree().title || 'Family Tree';
+
+        if (Bridge.shareText(title + ' - Family Tree Backup', text)) {
+            closeModal('exportModalOverlay');
+            showToast('Opening share sheet…');
+            return;
+        }
+
+        if (navigator.share) {
+            navigator.share({
+                title: title + ' - Family Tree Backup',
+                text: text
+            }).then(function () {
+                closeModal('exportModalOverlay');
+            }).catch(function () {});
+            return;
+        }
+
+        copyExportJson();
+        showToast('Copied — paste into any app to share');
+    }
+
+    function savePdf() {
+        var title = getActiveTree().title || 'Family Tree';
+        var collapsed = document.querySelectorAll('.collapsed');
+        for (var i = 0; i < collapsed.length; i++) collapsed[i].classList.remove('collapsed');
+
+        closeModal('exportModalOverlay');
+
+        setTimeout(function () {
+            if (Bridge.saveAsPdf(title)) {
+                showToast('Choose "Save as PDF" in the print dialog');
+                return;
+            }
+            try { window.print(); }
+            catch (e) { showToast('Print/PDF not available'); }
+        }, 350);
+    }
+
+    function applyImport(data) {
+        try {
+            if (!data || typeof data !== 'object') { showToast('Import failed: not an object'); return; }
+            var incoming;
+            if (data.trees && data.activeTreeId && data.trees[data.activeTreeId]) {
+                incoming = data;
+            } else if (data.trees && Object.keys(data.trees).length > 0) {
+                incoming = data;
+                incoming.activeTreeId = Object.keys(incoming.trees)[0];
+            } else if (data.tree || (data.id && data.name)) {
+                var treeData = data.tree || data;
+                var importId = 'imported_' + Date.now();
+                incoming = { activeTreeId: importId, trees: {} };
+                incoming.trees[importId] = {
+                    id: importId,
+                    title: (data.title || treeData.name || 'Imported') + ' Tree',
+                    data: treeData,
+                    images: data.images || {}
+                };
+            } else {
+                showToast('Import failed: unrecognised format');
+                return;
+            }
+            Object.keys(incoming.trees).forEach(function (k) {
+                var t = incoming.trees[k];
+                if (!t.id) t.id = k;
+                if (!t.images) t.images = {};
+                if (!t.title) t.title = 'Imported Tree';
+                normalizeTree(t.data);
+            });
+            if (!incoming.trees[incoming.activeTreeId]) {
+                incoming.activeTreeId = Object.keys(incoming.trees)[0];
+            }
+            appStorage = incoming;
+            var treeCount = Object.keys(appStorage.trees).length;
+            var activeId = appStorage.activeTreeId;
+            var activeTitle = appStorage.trees[activeId].title || 'tree';
+            var people = countPeople(appStorage.trees[activeId].data);
+            var saved = saveData();
+            closeModal('pasteImportOverlay');
+            renderTree();
+            updateTreeDropdown();
+            var sel = $('treeSelect');
+            if (sel) sel.value = activeId;
+            showToast('Imported: ' + activeTitle + '\n' + treeCount + ' tree(s), ' + people + ' people' +
+                      (saved ? '' : ' [NOT SAVED]'));
+        } catch (e) {
+            showToast('Import error: ' + (e && e.message ? e.message : 'unknown'));
+        }
+    }
+
+    function triggerImport() {
+        $('pasteImportTextarea').value = '';
+        openModal('pasteImportOverlay');
+    }
+
+    function pickImportFile() {
+        if (Bridge.pickFile()) return;
+
+        var container = $('importUploadContainer');
+        container.innerHTML = '';
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json,.json,text/plain';
+        input.style.display = 'none';
+        input.onchange = function (e) {
+            var file = e.target.files && e.target.files[0];
+            container.innerHTML = '';
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (ev) {
+                try {
+                    closeModal('pasteImportOverlay');
+                    applyImport(JSON.parse(ev.target.result));
+                } catch (err) { showToast('Invalid JSON'); }
+            };
+            reader.onerror = function () { showToast('Could not read file'); };
+            reader.readAsText(file);
+        };
+        container.appendChild(input);
+        input.click();
+    }
+
+    function createNewTree() {
+        var title = $('newTreeTitleInput').value.trim() || 'New Family Tree';
+        var rootName = $('rootPersonNameInput').value.trim() || 'Root Ancestor';
+        var newId = 'tree_' + Date.now();
+        appStorage.trees[newId] = {
+            id: newId, title: title,
+            data: { id: 'root_' + newId, name: rootName, role: 'Family Head', birth: '', death: '', children: [], spouses: [] },
+            images: {}
+        };
+        appStorage.activeTreeId = newId;
+        closeModal('newTreeModalOverlay');
+        saveAndRender();
+        showToast('Created ' + title);
+    }
+
+    function openEditTreeTitleModal() {
+        $('editTreeTitleInput').value = getActiveTree().title || '';
+        openModal('editTreeModalOverlay');
+    }
+
+    function confirmEditTreeTitle() {
+        var newTitle = $('editTreeTitleInput').value.trim();
+        if (!newTitle) { showToast('Title cannot be empty'); return; }
+        getActiveTree().title = newTitle;
+        closeModal('editTreeModalOverlay');
+        saveAndRender();
+        showToast('Renamed to ' + newTitle);
+    }
+
+    function purgeStorage() {
+        showConfirm('Clear Everything',
+            'This permanently deletes every saved tree and photo on this device. Export a backup first!',
+            'Wipe All',
+            function () {
+                try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                appStorage = {
+                    activeTreeId: 'default_tree',
+                    trees: { 'default_tree': {
+                        id: 'default_tree', title: 'My Family Tree',
+                        data: clone(DEFAULT_STARTER_TREE), images: {}
+                    }}
+                };
+                saveAndRender();
+                showToast('All data cleared');
+            });
+    }
+
+    function hideSplash() {
+        var s = $('splashScreen');
+        if (!s) return;
+        var elapsed = Date.now() - bootTime;
+        var wait = Math.max(0, 5000 - elapsed);
+        setTimeout(function () {
+            s.classList.add('hide');
+            scheduleFit();
+        }, wait);
+    }
+
+    /* ============================================================
+       ZOOM / GESTURE LOCK
+       ============================================================ */
+    function lockZoom() {
+        /* iOS Safari gesture events */
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evt) {
+            document.addEventListener(evt, function (e) { e.preventDefault(); }, { passive: false });
+        });
+
+        /* Double-tap zoom prevention (skip interactive elements) */
+        var lastTouchEnd = 0;
+        document.addEventListener('touchend', function (e) {
+            var now = Date.now();
+            if (now - lastTouchEnd <= 320) {
+                var t = e.target;
+                var interactive = false;
+                while (t && t !== document.body) {
+                    if (t.tagName === 'BUTTON' || t.tagName === 'INPUT' ||
+                        t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' ||
+                        t.tagName === 'A') { interactive = true; break; }
+                    t = t.parentNode;
+                }
+                if (!interactive) e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+
+        /* Multitouch (pinch) prevention */
+        document.addEventListener('touchmove', function (e) {
+            if (e.touches && e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+
+        /* Ctrl+wheel zoom prevention (desktop) */
+        document.addEventListener('wheel', function (e) {
+            if (e.ctrlKey) e.preventDefault();
+        }, { passive: false });
+
+        /* Ctrl +/- keyboard zoom prevention */
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    function init() {
+        hydrateIcons();
+        lockZoom();
+
+        try {
+            localStorage.setItem('__fw_test__', '1');
+            storageWorks = (localStorage.getItem('__fw_test__') === '1');
+            localStorage.removeItem('__fw_test__');
+        } catch (e) { storageWorks = false; }
+
+        var loaded = loadData();
+        renderTree();
+
+        $('mainTree').addEventListener('click', handleContainerClick);
+        $('detailActions').addEventListener('click', handleDetailAction);
+        $('detailCloseBtn').addEventListener('click', function () { closeModal('personDetailOverlay'); });
+
+        $('treeSelect').addEventListener('change', function (e) {
+            appStorage.activeTreeId = e.target.value;
+            saveAndRender();
+        });
+
+        $('exportBtn').addEventListener('click', openExportModal);
+        $('importBtn').addEventListener('click', triggerImport);
+        $('resetBtn').addEventListener('click', purgeStorage);
+
+        $('editTreeTitleBtn').addEventListener('click', openEditTreeTitleModal);
+        $('editTreeConfirm').addEventListener('click', confirmEditTreeTitle);
+        $('editTreeCancel').addEventListener('click', function () { closeModal('editTreeModalOverlay'); });
+
+        $('newTreeBtn').addEventListener('click', function () {
+            $('newTreeTitleInput').value = '';
+            $('rootPersonNameInput').value = '';
+            openModal('newTreeModalOverlay');
+        });
+        $('newTreeConfirm').addEventListener('click', createNewTree);
+        $('newTreeCancel').addEventListener('click', function () { closeModal('newTreeModalOverlay'); });
+
+        $('modalConfirm').addEventListener('click', confirmPersonModal);
+        $('modalCancel').addEventListener('click', function () { closeModal('modalOverlay'); });
+
+        $('moveConfirm').addEventListener('click', confirmReroute);
+        $('moveCancel').addEventListener('click', function () { closeModal('moveModalOverlay'); });
+
+        $('exportCloseBtn').addEventListener('click', function () { closeModal('exportModalOverlay'); });
+        $('downloadJsonFileBtn').addEventListener('click', saveExportToDevice);
+        $('copyJsonBtn').addEventListener('click', copyExportJson);
+        $('shareJsonBtn').addEventListener('click', shareExport);
+        $('savePdfBtn').addEventListener('click', savePdf);
+
+        $('pickImportFileBtn').addEventListener('click', pickImportFile);
+
+        $('pasteImportConfirm').addEventListener('click', function () {
+            var raw = $('pasteImportTextarea').value || '';
+            var txt = raw
+                .replace(/&quot;/g, '"').replace(/&#34;/g, '"')
+                .replace(/&apos;/g, "'").replace(/&#39;/g, "'")
+                .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                .trim();
+            if (!txt) { showToast('Nothing to import'); return; }
+            var parsed;
+            try { parsed = JSON.parse(txt); }
+            catch (err) { showToast('Invalid JSON: ' + err.message); return; }
+            closeModal('pasteImportOverlay');
+            applyImport(parsed);
+        });
+
+        $('pasteImportCancel').addEventListener('click', function () {
+            $('pasteImportTextarea').value = '';
+            closeModal('pasteImportOverlay');
+        });
+
+        $('confirmOk').addEventListener('click', function () {
+            var cb = confirmCallback;
+            confirmCallback = null;
+            closeModal('confirmOverlay');
+            if (typeof cb === 'function') cb();
+        });
+        $('confirmCancel').addEventListener('click', function () {
+            confirmCallback = null;
+            closeModal('confirmOverlay');
+        });
+
+        document.querySelectorAll('.modal-overlay').forEach(function (ov) {
+            ov.addEventListener('click', function (e) {
+                if (e.target === ov && ov.id !== 'confirmOverlay') ov.classList.remove('active');
+            });
+        });
+
+        window.addEventListener('resize', scheduleFit);
+        window.addEventListener('orientationchange', function () { setTimeout(scheduleFit, 260); });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', scheduleFit);
+            window.visualViewport.addEventListener('scroll', scheduleFit);
+        }
+        setTimeout(scheduleFit, 300);
+        setTimeout(scheduleFit, 1200);
+
+        hideSplash();
+        if (!loaded) saveData();
+
+        if (!storageWorks) {
+            setTimeout(function () { showToast('WARNING: storage is blocked.'); }, 5200);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
 </body>
 </html>
